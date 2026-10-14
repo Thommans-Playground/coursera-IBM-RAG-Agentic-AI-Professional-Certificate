@@ -8,8 +8,12 @@ authors = [
 ]
 requires-python = ">=3.14"
 dependencies = [
+    "ipykernel>=7.4.0",
+    "langchain-core>=1.6.10",
     "langchain-ibm>=0.1.7",
+    "langchain-openai>=1.7.2",
     "openai>=1.0.0",
+    "python-dotenv>=1.2.4",
 ]
 
 [project.scripts]
