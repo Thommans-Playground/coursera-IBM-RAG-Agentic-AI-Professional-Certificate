@@ -1,4 +1,4 @@
-from typing import Any, Protocol
+from typing import Protocol
 
 from domain.settings import GenerationSettings
 
@@ -8,7 +8,7 @@ class LLMPort(Protocol):
     A protocol that defines the interface for a Language Model (LLM) port.
     """
 
-    def generate_text(self, prompt: str, settings: GenerationSettings) -> Any:
+    def generate(self, prompt: str, settings: GenerationSettings) -> str:
         """
         Generate text based on the given prompt and generation settings.
 
