@@ -1,7 +1,7 @@
 [project]
-name = "module1"
+name = "ibm-rag-agentic-ai"
 version = "0.1.0"
-description = "Add your description here"
+description = "Coursera IBM RAG and Agentic AI Professional Certificate: study code and notebooks"
 readme = "README.md"
 authors = [
     { name = "Sree R One", email = "sreeraj_ec@hotmail.com" }
@@ -16,9 +16,5 @@ dependencies = [
     "python-dotenv>=1.2.4",
 ]
 
-[project.scripts]
-module1 = "module1:main"
-
-[build-system]
-requires = ["uv_build>=0.12.13,<0.13.0"]
-build-backend = "uv_build"
+[tool.uv]
+package = false

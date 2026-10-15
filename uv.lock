@@ -379,6 +379,29 @@ dependencies = [
 sdist = { url = "https://files.pythonhosted.org/packages/f3/ff/c9baf0997266d398ae08347951a2970e5e96ed6232ed0252f649f2b9a7eb/ibm_cos_sdk_s3transfer-2.14.3.tar.gz", hash = "sha256:2251ebfc4a46144401e431f4a5d9f04c262a0d6f95c88a8e71071da056e55f72", size = 139594, upload-time = "2025-08-01T06:35:46.403Z" }
 
 [[package]]
+name = "ibm-rag-agentic-ai"
+version = "0.1.0"
+source = { virtual = "." }
+dependencies = [
+    { name = "ipykernel" },
+    { name = "langchain-core" },
+    { name = "langchain-ibm" },
+    { name = "langchain-openai" },
+    { name = "openai" },
+    { name = "python-dotenv" },
+]
+
+[package.metadata]
+requires-dist = [
+    { name = "ipykernel", specifier = ">=7.4.0" },
+    { name = "langchain-core", specifier = ">=1.6.10" },
+    { name = "langchain-ibm", specifier = ">=0.1.7" },
+    { name = "langchain-openai", specifier = ">=1.7.2" },
+    { name = "openai", specifier = ">=1.0.0" },
+    { name = "python-dotenv", specifier = ">=1.2.4" },
+]
+
+[[package]]
 name = "ibm-watsonx-ai"
 version = "1.8.0"
 source = { registry = "https://pypi.org/simple" }
@@ -717,29 +740,6 @@ dependencies = [
 sdist = { url = "https://files.pythonhosted.org/packages/bd/c0/9f7c9a46090390368a4d7bcb76bb87a4a36c421e4c0792cdb53486ffac7a/matplotlib_inline-0.2.2.tar.gz", hash = "sha256:72f3fe8fce36b70d4a5b612f899090cd0401deddc4ea90e1572b9f4bfb058c79", size = 8150, upload-time = "2026-05-08T17:33:33.49Z" }
 wheels = [
     { url = "https://files.pythonhosted.org/packages/41/09/5b161152e2d90f7b87f781c2e1267494aef9c32498df793f73ad0a0a494a/matplotlib_inline-0.2.2-py3-none-any.whl", hash = "sha256:3c821cf1c209f59fb2d2d64abbf5b23b67bcb2210d663f9918dd851c6da1fcf6", size = 9534, upload-time = "2026-05-08T17:33:32.055Z" },
-]
-
-[[package]]
-name = "module1"
-version = "0.1.0"
-source = { editable = "." }
-dependencies = [
-    { name = "ipykernel" },
-    { name = "langchain-core" },
-    { name = "langchain-ibm" },
-    { name = "langchain-openai" },
-    { name = "openai" },
-    { name = "python-dotenv" },
-]
-
-[package.metadata]
-requires-dist = [
-    { name = "ipykernel", specifier = ">=7.4.0" },
-    { name = "langchain-core", specifier = ">=1.6.10" },
-    { name = "langchain-ibm", specifier = ">=0.1.7" },
-    { name = "langchain-openai", specifier = ">=1.7.2" },
-    { name = "openai", specifier = ">=1.0.0" },
-    { name = "python-dotenv", specifier = ">=1.2.4" },
 ]
 
 [[package]]
