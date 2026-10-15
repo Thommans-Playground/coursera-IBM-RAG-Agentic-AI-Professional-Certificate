@@ -1,38 +1,52 @@
-# module1
+# Module 1: Prompting and Prompt Templates
 
-This project uses a ports-and-adapters boundary for text generation:
+Hands-on practice with prompting techniques (zero-shot, one-shot, few-shot, chain-of-thought, self-consistency). Setup is shared from the repo root: see the [root README](../README.md).
 
-- `module1.ports.TextGenerationPort` is the application-facing port.
-- `module1.adapters.WatsonxTextGenerationAdapter` is the current IBM
-  watsonx.ai connector used by the notebook.
-- `module1.adapters.OpenAITextGenerationAdapter` is an alternative OpenAI
-  connector.
-- `module1.factory.create_text_generator` selects an adapter without changing
-  application code.
+## Files
 
-The default provider is `watsonx`:
+| File | Purpose |
+|---|---|
+| `mod1-manual.ipynb` | Walk-through using `FakeLLM` (no API key) and then `OpenAILLM` |
+| `mod1-openai.ipynb` | Same exercises against OpenAI. Needs `OPENAI_API_KEY` in the root `.env` |
+| `In-Context Learning and Prompt Templates for Advanced AI.ipynb` | Course lab notebook |
+| `prompting-examples.md` | Prompts to paste into a notebook cell and compare |
 
-```sh
-export LLM_PROVIDER=watsonx
-export WATSONX_PROJECT_ID=your-project-id
-export WATSONX_API_KEY=your-api-key
-uv run python -c "from module1.factory import create_text_generator; print(create_text_generator().generate('The wind is'))"
+## Code layout (ports and adapters)
+
+```mermaid
+flowchart LR
+    NB[Notebook] --> UC["application/use_cases.py<br/>RunTemplate, SelfConsistency"]
+    UC --> PORT["application/ports.py<br/>LLMPort"]
+    PORT -.implemented by.-> OAI["adapters/openai_llm.py<br/>OpenAILLM"]
+    PORT -.implemented by.-> FAKE["adapters/fake_llm.py<br/>FakeLLM"]
+    UC --> PL["application/prompt_library.py<br/>templates"]
+    UC --> ST["domain/settings.py<br/>GenerationSettings"]
 ```
 
-To use OpenAI instead:
+- **`LLMPort`** is a protocol with one method: `generate(prompt, settings) -> str`.
+- **`OpenAILLM`** calls OpenAI through `langchain-openai`. **`FakeLLM`** returns a fixed reply and records its calls, so you can test without a key.
+- **`GenerationSettings`** holds `temperature`, `max_tokens`, `top_p`, `frequency_penalty` and `presence_penalty`.
+- Application code depends only on `LLMPort`, so swapping providers needs no changes to it.
 
-```sh
-export LLM_PROVIDER=openai
-export OPENAI_API_KEY=your-api-key
-export OPENAI_MODEL=gpt-4o-mini
-uv run python -c "from module1.factory import create_text_generator; print(create_text_generator().generate('The wind is'))"
-```
+## Usage
 
-Application code depends only on the port:
+Run from inside `module1/`, because imports are top-level:
 
 ```python
-from module1.factory import create_text_generator
+from adapters.fake_llm import FakeLLM
+from application import prompt_library as prompts
+from application.use_cases import RunTemplate
 
-generator = create_text_generator()
-answer = generator.generate("The wind is ")
+llm = FakeLLM(reply="Short summary.")
+RunTemplate(llm, prompts.SUMMARIZE).execute(content="long article text")
+```
+
+Swap in the real model:
+
+```python
+from adapters.openai_llm import OpenAILLM
+from domain.settings import GenerationSettings
+
+llm = OpenAILLM(model="gpt-4o-mini")
+RunTemplate(llm, prompts.SUMMARIZE, GenerationSettings(temperature=0.2)).execute(content="...")
 ```
