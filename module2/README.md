@@ -2,7 +2,7 @@
 
 A plain-language guide to LangChain: what it is, its building blocks, and how to combine them.
 
-**How to use this guide:** read top to bottom once, then use the [Cheat Sheet](#9-cheat-sheet) and [Self-Quiz](#10-self-quiz) for revision.
+**How to use this guide:** read top to bottom once, then use the [Cheat Sheet](#10-cheat-sheet) and [Self-Quiz](#11-self-quiz) for revision.
 
 ## Contents
 
@@ -13,9 +13,28 @@ A plain-language guide to LangChain: what it is, its building blocks, and how to
 5. [Prompt Templates](#5-prompt-templates)
 6. [Output Parsers](#6-output-parsers)
 7. [Chains and Memory](#7-chains-and-memory)
-8. [Agents](#8-agents)
-9. [Cheat Sheet](#9-cheat-sheet)
-10. [Self-Quiz](#10-self-quiz)
+8. [LCEL: the modern way to chain](#8-lcel-the-modern-way-to-chain)
+9. [Agents](#9-agents)
+10. [Cheat Sheet](#10-cheat-sheet)
+11. [Self-Quiz](#11-self-quiz)
+
+---
+
+## Run the examples yourself
+
+The snippets use **OpenAI** through `langchain-openai`, which is already installed in the repo's shared environment (see the [root README](../README.md)). Put `OPENAI_API_KEY=...` in the root `.env`, pick the root `.venv` as your notebook kernel, then run this **once** at the top of a notebook. Every later snippet reuses `llm`.
+
+```python
+from dotenv import load_dotenv
+from langchain_openai import ChatOpenAI
+
+load_dotenv()
+llm = ChatOpenAI(model="gpt-4o-mini", temperature=0.5, max_tokens=256)
+
+llm.invoke("Say hello in five words.").content
+```
+
+Each call costs a small amount of API credit. The course uses IBM watsonx.ai instead. The ideas are identical and only the model line changes.
 
 ---
 
@@ -109,12 +128,31 @@ flowchart LR
 - `temperature`: creativity. Low (about 0) is focused and predictable. High (about 1) is more varied and creative.
 
 ```python
-# Sketch only: the exact imports depend on your version and provider
-llm = WatsonxLLM(
+reply = llm.invoke("Suggest a new sales approach for a coffee shop.")
+print(reply.content)      # the text
+print(type(reply))        # AIMessage: a chat model returns a message, not a bare string
+```
+
+Try the same question with different `temperature` values to feel the difference:
+
+```python
+for t in (0.0, 1.0):
+    creative = llm.bind(temperature=t)
+    print(t, "->", creative.invoke("Give me a name for a pet goldfish.").content)
+```
+
+**Course version (IBM watsonx.ai)** for comparison. Only the model line changes, so everything below works with it too:
+
+```python
+# needs: langchain-ibm, WATSONX_PROJECT_ID and WATSONX_API_KEY
+from langchain_ibm import ChatWatsonx
+
+llm = ChatWatsonx(
     model_id="mistralai/mixtral-8x7b-instruct-v01",
-    params={"max_new_tokens": 256, "temperature": 0.5},
+    url="https://us-south.ml.cloud.ibm.com",
+    project_id="YOUR_PROJECT_ID",
+    params={"max_tokens": 256, "temperature": 0.5},
 )
-llm.invoke("Suggest a new sales approach for a coffee shop.")
 ```
 
 > **Remember:** the *model* is the brain. Everything else in LangChain helps feed it good input and handle its output.
@@ -149,7 +187,8 @@ messages = [
     AIMessage(content="Try squats, push-ups and rows 3x a week."),
     HumanMessage(content="How many sets of each?"),   # the model answers THIS
 ]
-reply = chat_model.invoke(messages)
+reply = llm.invoke(messages)
+print(reply.content)
 ```
 
 Because the earlier turns are in the list, the model knows "each" means squats, push-ups and rows.
@@ -213,7 +252,8 @@ prompt = ChatPromptTemplate.from_messages([
     ("system", "You are a {style} assistant."),
     ("human", "{question}"),
 ])
-prompt.invoke({"style": "pirate", "question": "What is the capital of France?"})
+messages = prompt.invoke({"style": "pirate", "question": "What is the capital of France?"})
+print(llm.invoke(messages).content)
 ```
 
 ### Few-shot prompts and example selectors
@@ -226,6 +266,27 @@ Word: hot    -> Opposite: cold
 Word: tall   -> Opposite: ???        <- the model completes this
 ```
 
+As code:
+
+```python
+from langchain_core.prompts import FewShotPromptTemplate, PromptTemplate
+
+examples = [
+    {"word": "happy", "opposite": "sad"},
+    {"word": "hot", "opposite": "cold"},
+]
+example_prompt = PromptTemplate.from_template("Word: {word} -> Opposite: {opposite}")
+
+few_shot = FewShotPromptTemplate(
+    examples=examples,
+    example_prompt=example_prompt,
+    suffix="Word: {word} -> Opposite:",
+    input_variables=["word"],
+)
+print(few_shot.format(word="tall"))
+print(llm.invoke(few_shot.format(word="tall")).content)
+```
+
 If you have **hundreds** of examples, you can't paste them all in. An **example selector** picks only the most useful ones for each question.
 
 | Selector | Picks examples that are... | Good for |
@@ -234,6 +295,27 @@ If you have **hundreds** of examples, you can't paste them all in. An **example 
 | **Max marginal relevance (MMR)** | Relevant *and* different from each other | Variety |
 | **Length-based** | Short enough to fit the space available | Staying under length limits (the transcript calls this "efficient prompts") |
 | **N-gram overlap** | Sharing the most words/phrases with the input | Simple text matching |
+
+A selector that needs no extra packages is the length-based one:
+
+```python
+from langchain_core.example_selectors import LengthBasedExampleSelector
+
+selector = LengthBasedExampleSelector(
+    examples=examples * 5,          # pretend we have 10 examples
+    example_prompt=example_prompt,
+    max_length=25,                  # budget, counted in words
+)
+few_shot = FewShotPromptTemplate(
+    example_selector=selector,
+    example_prompt=example_prompt,
+    suffix="Word: {word} -> Opposite:",
+    input_variables=["word"],
+)
+print(few_shot.format(word="tall"))   # only as many examples as fit the budget
+```
+
+The semantic-similarity and MMR selectors need an embeddings model and a vector store, so they come later in the course.
 
 ```mermaid
 flowchart LR
@@ -271,6 +353,34 @@ parser.parse("apple, banana, cherry")
 
 Now you can loop over the list or drop it into a spreadsheet.
 
+Use it in a real chain, where the parser also tells the model what format to produce:
+
+```python
+from langchain_core.prompts import PromptTemplate
+
+prompt = PromptTemplate.from_template(
+    "List 4 {thing}.\n{format_instructions}",
+).partial(format_instructions=parser.get_format_instructions())
+
+chain = prompt | llm | parser
+chain.invoke({"thing": "primary colours of paint pigments"})
+# -> ['red', 'yellow', 'blue', ...]  (a real Python list)
+```
+
+And a JSON parser for structured data:
+
+```python
+from langchain_core.output_parsers import JsonOutputParser
+
+json_parser = JsonOutputParser()
+prompt = PromptTemplate.from_template(
+    "Give the name and capital of {country}.\n{format_instructions}",
+).partial(format_instructions=json_parser.get_format_instructions())
+
+(prompt | llm | json_parser).invoke({"country": "Japan"})
+# -> {'name': 'Japan', 'capital': 'Tokyo'}
+```
+
 ---
 
 ## 7. Chains and Memory
@@ -299,37 +409,50 @@ flowchart LR
     C3 -->|time| OUT([Final answer])
 ```
 
-**How each chain is built (3 steps, the same every time):**
+**How each chain is built (the same every time):**
 
 1. Write a **template string** for the prompt.
 2. Wrap it in a **PromptTemplate** and name its input variable.
-3. Create an **LLMChain** from the model and the template, with an `output_key` (the name for its result).
+3. Connect `prompt | llm | parser`.
 
-Then wrap all three chains in a **SequentialChain**. Setting `verbose=True` prints every step so you can watch the data flow.
+Then link the three chains so each result is added to a growing dict (`meal` → `recipe` → `time`):
 
 ```python
-# Course style (older API). Works, but now considered legacy.
-location_chain = LLMChain(llm=llm, prompt=location_prompt, output_key="meal")
-dish_chain     = LLMChain(llm=llm, prompt=dish_prompt,     output_key="recipe")
-recipe_chain   = LLMChain(llm=llm, prompt=time_prompt,     output_key="time")
+from langchain_core.prompts import PromptTemplate
+from langchain_core.output_parsers import StrOutputParser
+from langchain_core.runnables import RunnablePassthrough
 
-overall = SequentialChain(
-    chains=[location_chain, dish_chain, recipe_chain],
-    input_variables=["location"],
-    output_variables=["meal", "recipe", "time"],
-    verbose=True,
+parser = StrOutputParser()
+
+location_chain = (
+    PromptTemplate.from_template("Name one famous dish from {location}. Reply with only the dish name.")
+    | llm | parser
 )
-overall.invoke({"location": "China"})
+dish_chain = (
+    PromptTemplate.from_template("Give a simple recipe for {meal}.")
+    | llm | parser
+)
+time_chain = (
+    PromptTemplate.from_template("Estimate the total cooking time for this recipe:\n{recipe}")
+    | llm | parser
+)
+
+overall = (
+    {"meal": location_chain}                     # step 1 -> {"meal": ...}
+    | RunnablePassthrough.assign(recipe=dish_chain)   # step 2 adds "recipe"
+    | RunnablePassthrough.assign(time=time_chain)     # step 3 adds "time"
+)
+
+result = overall.invoke({"location": "China"})
+print(result["meal"])
+print(result["time"])
 ```
 
-> **Heads-up:** newer LangChain versions use the **pipe `|` syntax (LCEL)** instead of `LLMChain`. The idea is identical, only the spelling differs:
->
-> ```python
-> chain = prompt | llm | StrOutputParser()
-> chain.invoke({"location": "China"})
-> ```
->
-> Read it as: prompt → model → parser. The `|` is the arrow.
+`RunnablePassthrough.assign(...)` means: keep everything so far and add one new key. That reproduces the course's `output_key` behaviour.
+
+> **About the course code.** The course uses the older `LLMChain` and `SequentialChain` classes with `output_key="meal"` and `verbose=True`. They were removed from the core package in LangChain 1.x, so the snippet above is the modern equivalent. To watch each step, call `from langchain_core.globals import set_debug; set_debug(True)` before invoking.
+
+The core idea, as a one-liner: `chain = prompt | llm | StrOutputParser()`. Read it as prompt → model → parser. The `|` is the arrow, covered in [section 8](#8-lcel-the-modern-way-to-chain).
 
 ### 7.2 Memory
 
@@ -356,23 +479,190 @@ sequenceDiagram
     C-->>U: "Paris"
 ```
 
-**Example with `ChatMessageHistory`:**
+Memory is just a **list of messages** that you keep and pass back in each time. The course uses a `ChatMessageHistory` class for this. That class is being deprecated in LangChain 1.x, and a plain list does the same job:
+
+**Step 1: the history is a list**
 
 ```python
-from langchain_community.chat_message_histories import ChatMessageHistory
+from langchain_core.messages import AIMessage, HumanMessage
 
-history = ChatMessageHistory()
-history.add_ai_message("Hi!")
-history.add_user_message("What is the capital of France?")
-history.messages
-# [AIMessage('Hi!'), HumanMessage('What is the capital of France?')]
+history = [
+    AIMessage("Hi!"),
+    HumanMessage("What is the capital of France?"),
+]
 ```
+
+**Step 2: a chat that actually remembers**
+
+```python
+from langchain_core.prompts import ChatPromptTemplate, MessagesPlaceholder
+
+prompt = ChatPromptTemplate.from_messages([
+    ("system", "You are a helpful assistant. Be brief."),
+    MessagesPlaceholder("history"),          # past messages go here
+    ("human", "{question}"),
+])
+chat = prompt | llm
+history = []
+
+def ask(question):
+    reply = chat.invoke({"history": history, "question": question})   # READ
+    history.append(HumanMessage(question))                            # WRITE
+    history.append(AIMessage(reply.content))
+    return reply.content
+
+print(ask("What is the capital of France?"))   # Paris
+print(ask("What is its population?"))          # works: the model sees the history
+```
+
+For storing history per user or session in a real app, look at `RunnableWithMessageHistory` or LangGraph checkpointers.
 
 Without memory, a follow-up like "What's its population?" fails because the model doesn't know what "its" refers to.
 
 ---
 
-## 8. Agents
+## 8. LCEL: the modern way to chain
+
+**LCEL (LangChain Expression Language)** is the recommended way to build chains today. You connect components with the **pipe operator `|`**, like pipes in a terminal. The data flows left to right.
+
+```python
+from langchain_core.prompts import PromptTemplate
+from langchain_core.output_parsers import StrOutputParser
+
+prompt = PromptTemplate.from_template("Explain {topic} to a 10-year-old in two sentences.")
+chain = prompt | llm | StrOutputParser()
+chain.invoke({"topic": "volcanoes"})
+```
+
+Why it's preferred over the older `LLMChain`:
+
+- Easier to read: the data flow is visible in one line.
+- Easier to combine: any part can be swapped or reused.
+- Free extras: parallel execution, async support, simple streaming and automatic tracing.
+
+### Four steps to build an LCEL chain
+
+1. Write a **template** with variables in curly braces.
+2. Create a **prompt template** from it.
+3. Connect the pieces with `|`.
+4. **Invoke** the chain with input values.
+
+```python
+from langchain_core.prompts import PromptTemplate
+from langchain_core.output_parsers import StrOutputParser
+
+prompt = PromptTemplate.from_template("Tell me a {adjective} joke about {content}.")
+chain = prompt | llm | StrOutputParser()
+print(chain.invoke({"adjective": "funny", "content": "cats"}))
+```
+
+```mermaid
+flowchart LR
+    IN(["{adjective, content}"]) --> P[Prompt Template] -->|pipe| L[LLM] -->|pipe| O[StrOutputParser] --> OUT([Joke text])
+```
+
+### Runnables: the building blocks
+
+A **runnable** is any component with a common interface (`invoke`, `stream`, ...). Prompts, models, parsers, retrievers and tools are all runnables, which is why they snap together.
+
+There are two composition primitives:
+
+| Primitive | What it does | Shortcut |
+|---|---|---|
+| **RunnableSequence** | Runs steps one after another. Output of one is input of the next | `a \| b` |
+| **RunnableParallel** | Runs steps at the same time. Each gets the **same input** | A plain `{...}` dict |
+
+```mermaid
+flowchart LR
+    subgraph SEQ["RunnableSequence: a | b"]
+        direction LR
+        A1[a] --> B1[b]
+    end
+    subgraph PAR["RunnableParallel: dict"]
+        direction TB
+        I[same input] --> X[task 1]
+        I --> Y[task 2]
+        I --> Z[task 3]
+    end
+```
+
+### Automatic type coercion
+
+LCEL converts ordinary Python into runnables for you:
+
+| You write | LCEL turns it into | Behaviour |
+|---|---|---|
+| a **dictionary** | `RunnableParallel` | Runs all entries concurrently |
+| a **function** | `RunnableLambda` | Transforms the input |
+
+### Example: three tasks at once
+
+```python
+from langchain_core.runnables import RunnableParallel
+
+summary_prompt = PromptTemplate.from_template("Summarize in one sentence: {text}")
+translation_prompt = PromptTemplate.from_template("Translate to French: {text}")
+sentiment_prompt = PromptTemplate.from_template(
+    "Is the sentiment of this text positive, negative or neutral? One word only: {text}"
+)
+
+chain = RunnableParallel(
+    summary=summary_prompt | llm | StrOutputParser(),
+    translation=translation_prompt | llm | StrOutputParser(),
+    sentiment=sentiment_prompt | llm | StrOutputParser(),
+)
+# A plain dict gets coerced to RunnableParallel when piped, e.g. {...} | next_step
+chain.invoke({"text": "I love this product!"})
+# -> {"summary": "...", "translation": "...", "sentiment": "positive"}
+```
+
+All three prompts receive the same `text`. The result is one dict with three keys.
+
+```mermaid
+flowchart LR
+    T([text]) --> S[summary chain] --> R1[summary]
+    T --> TR[translation chain] --> R2[translation]
+    T --> SE[sentiment chain] --> R3[sentiment]
+    R1 & R2 & R3 --> OUT([one dict with 3 keys])
+```
+
+### Example: wrapping a function with RunnableLambda
+
+```python
+from langchain_core.runnables import RunnableLambda
+
+template = "Tell me a {adjective} joke about {content}."
+
+def format_prompt(inputs):
+    return template.format(adjective=inputs["adjective"], content=inputs["content"])
+
+joke_chain = RunnableLambda(format_prompt) | llm | StrOutputParser()
+print(joke_chain.invoke({"adjective": "silly", "content": "robots"}))
+```
+
+Two more things LCEL gives you for free:
+
+```python
+# Streaming: tokens appear as they are generated
+for chunk in joke_chain.stream({"adjective": "silly", "content": "robots"}):
+    print(chunk, end="", flush=True)
+
+# Batch: run many inputs, in parallel
+joke_chain.batch([
+    {"adjective": "silly", "content": "robots"},
+    {"adjective": "dry", "content": "accountants"},
+])
+```
+
+Flow: the input dict goes to `format_prompt`, which builds the text. The `|` hands that text to the LLM. Another `|` hands the reply to the parser.
+
+### Limits
+
+LCEL is best for **simple orchestration** (straight lines and fan-out). For complex workflows with branching, loops or many steps, use **LangGraph**, and keep using LCEL inside each node.
+
+---
+
+## 9. Agents
 
 A chain follows a **fixed** path that you design. An **agent** lets the **LLM decide** what to do next.
 
@@ -396,12 +686,48 @@ flowchart TD
     F -- Yes --> ANS([Final answer])
 ```
 
-### Example: Pandas DataFrame agent
+### Example: a tiny agent loop with one tool
 
-Ask questions about a table in plain English.
+This uses only packages you already have. The model *asks* for a tool, your code *runs* it, and the result goes back to the model.
 
 ```python
+from langchain_core.tools import tool
+from langchain_core.messages import HumanMessage, ToolMessage
+
+@tool
+def get_population(country: str) -> str:
+    """Return the population of a country."""
+    data = {"italy": "about 59 million", "france": "about 68 million"}
+    return data.get(country.lower(), "unknown")
+
+tools = {"get_population": get_population}
+llm_with_tools = llm.bind_tools(list(tools.values()))
+
+messages = [HumanMessage("What is the population of Italy?")]
+while True:
+    ai = llm_with_tools.invoke(messages)
+    messages.append(ai)
+    if not ai.tool_calls:                      # no tool needed: we have the final answer
+        break
+    for call in ai.tool_calls:                 # the model only ASKS; we RUN the tool
+        result = tools[call["name"]].invoke(call["args"])
+        messages.append(ToolMessage(content=result, tool_call_id=call["id"]))
+
+print(ai.content)
+```
+
+Trace what happens: the model replies with a tool call for `get_population("Italy")` → your code runs it → the `ToolMessage` goes back → the model writes the final answer. That is the think → act → observe loop from the diagram.
+
+### Example: Pandas DataFrame agent (from the course)
+
+Ask questions about a table in plain English. This needs one extra package: `uv add langchain-experimental` (run at the repo root).
+
+```python
+# needs: langchain-experimental
+import pandas as pd
 from langchain_experimental.agents import create_pandas_dataframe_agent
+
+df = pd.DataFrame({"city": ["Rome", "Milan", "Turin"], "pop_m": [2.8, 1.4, 0.9]})
 
 agent = create_pandas_dataframe_agent(llm, df, verbose=True, allow_dangerous_code=True)
 agent.invoke("How many rows are in the dataframe?")
@@ -416,13 +742,13 @@ flowchart LR
     X --> R["Answer: 139"]
 ```
 
-`verbose=True` lets you see the LLM's reasoning. The course's example returned **139 rows**.
+`verbose=True` lets you see the LLM's reasoning. The course's dataset returned **139 rows**. With the small table above you should get 3.
 
 > **Safety note:** this agent *executes code the LLM writes*. Only use it on data and in environments you trust. Recent versions require `allow_dangerous_code=True` to make you acknowledge that.
 
 ---
 
-## 9. Cheat Sheet
+## 10. Cheat Sheet
 
 | Concept | Remember it as | Key point |
 |---|---|---|
@@ -434,6 +760,7 @@ flowchart LR
 | Few-shot | "Learn from examples" | Selectors pick the best examples |
 | Output parser | Text → structure | JSON, CSV, list, DataFrame |
 | Chain | Assembly line | Output of step N → input of step N+1 |
+| LCEL | Pipes connecting runnables | `a \| b` runs a then b; a dict runs in parallel |
 | Memory | Notebook | Read before, write after each run |
 | Agent | A chef who decides | LLM picks tools; framework runs them |
 
@@ -458,7 +785,7 @@ flowchart TD
 
 ---
 
-## 10. Self-Quiz
+## 11. Self-Quiz
 
 Try answering **before** you open the answers.
 
@@ -472,6 +799,9 @@ Try answering **before** you open the answers.
 8. Why do LLM apps need memory?
 9. What is the key difference between a chain and an agent?
 10. Does the LLM itself run a tool in an agent?
+11. What does the `|` operator do in LCEL?
+12. What happens when you put a dictionary in an LCEL chain?
+13. When should you reach for LangGraph instead of plain LCEL?
 
 <details>
 <summary>Show answers</summary>
@@ -486,6 +816,9 @@ Try answering **before** you open the answers.
 8. LLMs are stateless, so memory stores and re-supplies past messages to keep context.
 9. A chain's steps are fixed in advance. An agent's steps are chosen by the LLM at run time.
 10. No. The LLM only outputs text that says what to do. The agent framework runs the tool.
+11. It connects two runnables in sequence: the output of the left one becomes the input of the right one.
+12. It becomes a `RunnableParallel`: every entry runs at the same time on the same input, and the result is a dict with one key per entry.
+13. For complex workflows (branches, loops, many steps). LCEL suits simpler orchestration, and you can still use it inside each LangGraph node.
 
 </details>
 
