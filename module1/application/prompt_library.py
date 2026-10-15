@@ -19,3 +19,9 @@ REVIEW = PromptTemplate.from_template(
     "- Key Features Mentioned: (list the product features mentioned)\n"
     "- Summary: (one-sentence summary)"
 )
+
+REASON = PromptTemplate.from_template(
+    "{question}\n\n"
+    "Think step by step. End with a line in exactly this form:\n"
+    "Final answer: <answer>"
+)
