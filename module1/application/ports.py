@@ -16,5 +16,5 @@ class LLMPort(Protocol):
             prompt (str): The input prompt for text generation.
             settings (GenerationSettings): The settings for text generation.
         Returns:
-            Any: The generated text.
+            str: The generated text.
         """
