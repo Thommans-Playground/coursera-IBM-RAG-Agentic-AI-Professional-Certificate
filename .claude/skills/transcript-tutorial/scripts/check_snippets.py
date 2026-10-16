@@ -17,7 +17,7 @@ from langchain_core.language_models.fake_chat_models import GenericFakeChatModel
 from langchain_core.messages import AIMessage
 from langchain_core.runnables import RunnableLambda
 
-REPLY = '{"name": "Japan", "capital": "Tokyo", "questions": ["q1", "q2", "q3"]}'  # valid JSON for parsers
+REPLY = '{"name": "Japan", "capital": "Tokyo", "questions": ["q1", "q2", "q3"], "items": ["a", "b"]}'  # valid JSON for parsers
 
 
 class FakeChat(GenericFakeChatModel):

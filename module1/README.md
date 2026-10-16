@@ -2,6 +2,13 @@
 
 Hands-on practice with prompting techniques (zero-shot, one-shot, few-shot, chain-of-thought, self-consistency). Setup is shared from the repo root: see the [root README](../README.md).
 
+## Hands-on tutorials
+
+Type-along study guides with code, diagrams and exercises:
+
+- [Tutorial 1: GenAI and prompting, adapted](tutorials/01-genai-and-prompting-adapted.md) follows the course videos and lab in order.
+- [Tutorial 2: build a prompt workbench](tutorials/02-build-a-prompt-workbench.md) tests prompting techniques side by side, one problem at a time.
+
 ## Files
 
 | File | Purpose |

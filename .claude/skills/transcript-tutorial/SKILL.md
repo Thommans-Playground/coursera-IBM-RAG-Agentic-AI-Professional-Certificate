@@ -1,19 +1,31 @@
 ---
 name: transcript-tutorial
-description: Turn a course video transcript (pasted, or from a file) into a clean, concept-by-concept follow-along tutorial saved as a markdown file with mermaid diagrams and small typeable code steps. Use this whenever the user pastes a transcript or lecture/video text from the Coursera IBM RAG and Agentic AI course, says "process this transcript", "make a tutorial", "break this into concepts", "I have another set for module N", or wants study material they can type along with and ask questions about, even if they don't say the word "skill" or "tutorial".
+description: Turn course material (a video transcript, a lab notebook .ipynb, or both) into clean, concept-by-concept follow-along tutorials saved as markdown files with mermaid diagrams and small typeable code steps, verified to run. Use this whenever the user pastes a transcript or lecture text, adds a lab notebook to a module folder, mentions the Coursera IBM RAG and Agentic AI course, says "process this transcript", "make a tutorial", "follow along", "break this into concepts", "I have another set for module N", or wants study material they can type along with and ask questions about, even if they don't say the word "skill" or "tutorial".
 ---
 
-# Transcript to follow-along tutorial
+# Course material to follow-along tutorials
 
 The reader is a learner using this repo as a study tool. They will **type the code themselves** while reading, then ask you questions. So the tutorial must be easy to follow one small step at a time, and every snippet must actually run. A tutorial with code that fails on the first paste loses the reader's trust.
 
 ## Inputs to settle first
 
-- **The transcript**: pasted text, or a file path. Read the whole thing before writing.
+- **The material**: a pasted transcript, a file path, or a lab notebook in the module folder. Read all of it before writing. For a notebook, dump a compact view first (markdown cells shortened, code cells in full, outputs trimmed) into the scratchpad directory and read that, because raw `.ipynb` JSON is huge. A big lab can be 200+ cells.
 - **Target module**: `moduleN/` (ask only if it is not obvious from the conversation).
-- **Topic name**: a short slug from the transcript's main idea, for example `lcel-chaining`.
+- **Topic name**: a short slug from the main idea, for example `lcel-chaining`.
+- **Which flavour(s)** (see next section). If the user does not say, make both for a lab notebook and the single "adapted" flavour for a short transcript.
 
 Do not ask more than that. Pick sensible defaults and say what you picked.
+
+## Two flavours of tutorial
+
+| Flavour | When | Shape |
+|---|---|---|
+| **Adapted** (`NN-<slug>-adapted.md`) | The user wants to follow the course itself | Same order and concepts as the transcript or lab, modernised. Lab exercises become practice tasks with no answers. |
+| **Project** (`NN-<slug>-build-<app>.md`) | The user wants the best way to understand, or the material is a catalogue of components | One small app grown step by step. Every step opens with **The problem** you just hit, then **The fix** (the concept). Use a corpus the learner already owns (the module README) so there is no download, and so they can ask it things they study. |
+
+Why the project flavour: a catalogue of parts is hard to remember because the learner never feels why a part exists. A problem-first ladder makes each concept earn its place (for example: memory appears because the bot just forgot the user's name). Each project step uses: The problem, The fix, Type this, What you should see, Why it works, Try it, plus a mermaid diagram. End with a whole-app diagram, a common-mistakes table, practice and a cheat sheet.
+
+Cross-link the two tutorials at the top and bottom, and add a short "Hands-on tutorials" section to the module README.
 
 ## Steps
 
@@ -27,7 +39,7 @@ Find the distinct ideas, one per section, ordered so each builds on the previous
 
 ### 3. Write the tutorial
 
-Save to `moduleN/tutorials/<NN>-<slug>.md`, where NN continues the numbering of existing files in that folder (01 if none). Use this shape:
+Save to `moduleN/tutorials/<NN>-<slug>.md`, where NN continues the numbering of existing files in that folder (01 if none). The shape below is for the adapted flavour; the project flavour replaces each concept section with the problem-first step described above.
 
 ```
 # <Title>
@@ -50,6 +62,7 @@ Save to `moduleN/tutorials/<NN>-<slug>.md`, where NN continues the numbering of 
 Writing rules, and why:
 - **Simple language, short sentences.** The reader wants low friction. Define a term the first time it appears.
 - **Small code blocks (under about 15 lines), built up in order.** They type it by hand, so long dumps cause typos and skipped understanding. Start with the smallest working version, then add one thing at a time.
+- **Show where the course and today differ.** When the course code uses a removed or legacy API, keep the course's concept and add a note in the exact form `> **Lab says / today we use:** ...` so the learner can map the original notebook to what they type. Also flag course quirks that would mislead (for example a demo setting that truncates embeddings to 3 tokens) and say why you did not copy them.
 - **Teach what the video taught, in its order.** Anything you add beyond the video (modern API notes, extra examples) goes under a "Beyond the video" label so the reader knows what the course covers and what is extra.
 - **Comments in code explain why, not what.**
 
@@ -58,7 +71,9 @@ Writing rules, and why:
 - Use the repo's stack: the shared root `.venv`, OpenAI via `ChatOpenAI(model="gpt-4o-mini")`, and `OPENAI_API_KEY` from the root `.env`. The setup cell is in `module2/README.md` ("Run the examples yourself"); link to it rather than copying it, except for a minimal version in "Before you start".
 - The course uses IBM watsonx.ai. Keep the concept identical and show the watsonx model line as a comparison, since the transcript is about watsonx.
 - Prefer current LangChain 1.x idioms (LCEL `prompt | llm | parser`). The course sometimes shows removed or deprecated classes such as `LLMChain`, `SequentialChain` and `ChatMessageHistory`. Show the modern equivalent and say why the video differs. Check what is installed first with `uv pip list` and confirm an import exists before using it.
-- If a snippet needs a package that is not installed, say `uv add <pkg>` (at the repo root) in the text. Do not edit `pyproject.toml` yourself.
+- Prefer what is already installed (for example `InMemoryVectorStore` over Chroma, `DeterministicFakeEmbedding` in checks). If a lab truly needs more packages (loaders, splitters, `langchain`), run `uv add` at the repo root, since runnable code is the point, and tell the user exactly what changed in `pyproject.toml`. For a package used only by an optional extra, do not install it. Mark that block `# needs: <pkg>` and put the `uv add` line in the text.
+- Prefer a hand-built version over a removed class when the idea is small (for example a parent-document retriever in about 15 lines): the learner sees what it does.
+- Probe unfamiliar APIs in a throwaway script first (imports, signatures, a real loader call) before writing them into a tutorial.
 
 ### 5. Mermaid rules
 
@@ -72,11 +87,11 @@ Run the checker, which extracts every python block, swaps `ChatOpenAI` for a fak
 uv run python .claude/skills/transcript-tutorial/scripts/check_snippets.py moduleN/tutorials/<file>.md
 ```
 
-It checks structure and wiring, not real model output, so say that in your report. A block that needs a missing package or real credentials can opt out by starting with the comment `# needs:` (it will be skipped and listed). Fix every failure before telling the user it is done. Do not call the real API unless the user asks, since it costs money.
+It fakes the chat model (including tool calls, so agents run) and `OpenAIEmbeddings`, while document loaders run for real (free; needs network). It checks structure and wiring, not real model output, so say that in your report. A block that needs a missing package or real credentials can opt out by starting with the comment `# needs:` (it will be skipped and listed). Fix every failure before telling the user it is done. Do not call the real API unless the user asks, since it costs money.
 
 ### 7. Report
 
-Tell the user: the file path, the list of concepts, any transcript corrections, anything labelled "Beyond the video", and what the check did and did not prove. Offer to link the tutorial from the module README.
+Tell the user: the file path(s), the list of concepts, any transcript or lab corrections, packages added, anything labelled "Beyond the video", and what the check did and did not prove. Offer to link the tutorial from the module README.
 
 ## After the tutorial: study mode
 
