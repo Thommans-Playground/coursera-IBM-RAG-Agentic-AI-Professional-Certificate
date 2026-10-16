@@ -20,6 +20,15 @@ A plain-language guide to LangChain: what it is, its building blocks, and how to
 
 ---
 
+## Hands-on tutorials
+
+Type-along versions with code, diagrams and exercises:
+
+- [Tutorial 1: the Coursera lab, adapted](tutorials/01-langchain-lab-adapted.md) follows the lab's order, modernised for OpenAI and LangChain 1.x.
+- [Tutorial 2: build a study buddy](tutorials/02-build-a-study-buddy.md) grows one app step by step, so each concept appears when you need it.
+
+---
+
 ## Run the examples yourself
 
 The snippets use **OpenAI** through `langchain-openai`, which is already installed in the repo's shared environment (see the [root README](../README.md)). Put `OPENAI_API_KEY=...` in the root `.env`, pick the root `.venv` as your notebook kernel, then run this **once** at the top of a notebook. Every later snippet reuses `llm`.
