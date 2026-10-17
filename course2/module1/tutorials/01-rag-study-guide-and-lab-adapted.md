@@ -6,7 +6,7 @@
 
 > **Lab says / today we use:** ...
 
-Prefer learning by building one app, one problem at a time? Read [Tutorial 2: build a "study notes" bot](02-rag-build-a-notes-bot.md). The two tutorials teach the same ideas in different ways.
+Prefer learning by building one app, one problem at a time? Read [Tutorial 2: build a "study notes" bot](02-rag-build-a-notes-bot.md). The two tutorials teach the same ideas in different ways. To see the pipeline in a web app (Next.js + FastAPI), try [Tutorial 3](03-build-the-rag-lab-web-app.md).
 
 ## After this tutorial you can
 

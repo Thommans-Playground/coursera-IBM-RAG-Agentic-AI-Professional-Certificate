@@ -29,6 +29,8 @@ Type-along versions with code, diagrams and exercises:
 - [Tutorial 1: study guide and the lab, adapted](tutorials/01-rag-study-guide-and-lab-adapted.md) follows the videos and the lab in order, modernised for OpenAI and LangChain 1.x.
 - [Tutorial 2: build a notes bot](tutorials/02-rag-build-a-notes-bot.md) grows one bot that answers from `transcript.md`, step by step, so each concept appears when you need it.
 
+- [Tutorial 3: build the RAG lab as a web app](tutorials/03-build-the-rag-lab-web-app.md) rebuilds the lab with a Next.js, TypeScript, Tailwind and shadcn/ui frontend and a FastAPI backend. Three tabs let you *see* chunks, retrieval scores and answers (with the "I don't know" rule and memory as switches). The finished app is in [app/](app/).
+
 Source material in this folder: [transcript.md](transcript.md) (video transcripts and readings) and the lab notebook *Summarize private documents using RAG LangChain and LLMs*.
 
 ---

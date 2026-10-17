@@ -447,3 +447,4 @@ No answers shown. Ask me for a hint.
 | 7 | Poor answers | Inspect chunks; tune `k`, size, overlap |
 
 Back to [Tutorial 1](01-rag-study-guide-and-lab-adapted.md).
+Want a web interface? See [Tutorial 3](03-build-the-rag-lab-web-app.md).
