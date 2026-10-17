@@ -1,6 +1,6 @@
 from typing import Protocol
 
-from domain.settings import GenerationSettings
+from course1.module1.domain.settings import GenerationSettings
 
 
 class LLMPort(Protocol):

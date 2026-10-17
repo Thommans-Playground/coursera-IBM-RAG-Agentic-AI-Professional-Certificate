@@ -1,18 +1,16 @@
+import re
+from collections import Counter
 from dataclasses import (
     dataclass,
     field,
 )
 
-from collections import Counter
-import re
-
 from langchain_core.prompts import PromptTemplate
 from langchain_core.runnables import RunnableLambda
 
-from application import prompt_library as prompts
-from application.ports import LLMPort
-from domain.settings import GenerationSettings
-
+from course1.module1.application import prompt_library as prompts
+from course1.module1.application.ports import LLMPort
+from course1.module1.domain.settings import GenerationSettings
 
 _FINAL = re.compile(r"final answer:\s*(.+)", re.IGNORECASE)
 

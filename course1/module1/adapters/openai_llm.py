@@ -1,5 +1,6 @@
 from langchain_openai import ChatOpenAI
-from domain.settings import GenerationSettings
+
+from course1.module1.domain.settings import GenerationSettings
 
 
 class OpenAILLM:
