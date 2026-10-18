@@ -1,93 +1,104 @@
-"""Everything we keep in Redis. Key names live here so the API and the worker agree."""
-import json
-import time
+"""Every SQL statement lives here. Other files ask in plain words."""
 import uuid
 
-from redis.asyncio import Redis
+import numpy as np
+from psycopg.types.json import Jsonb
+from psycopg_pool import AsyncConnectionPool
+
+import owasp
 
 DEFAULT_TITLE = "New chat"
 
 
-# Key builders. The Celery worker imports these too.
-def conv_key(cid: str) -> str:
-    return f"conv:{cid}"
+# Small helpers. A pool hands out a connection for the length of one `with` block.
+async def execute(pool: AsyncConnectionPool, sql: str, params=None) -> None:
+    async with pool.connection() as conn:
+        await conn.execute(sql, params)
 
 
-def msgs_key(cid: str) -> str:
-    return f"conv:{cid}:msgs"
+async def one(pool: AsyncConnectionPool, sql: str, params=None) -> dict | None:
+    async with pool.connection() as conn:
+        return await (await conn.execute(sql, params)).fetchone()
 
 
-def docs_key(cid: str) -> str:
-    return f"conv:{cid}:docs"
+async def many(pool: AsyncConnectionPool, sql: str, params=None) -> list[dict]:
+    async with pool.connection() as conn:
+        return await (await conn.execute(sql, params)).fetchall()
 
 
-def chunks_key(cid: str) -> str:
-    return f"conv:{cid}:chunks"
 
-
-def doc_key(doc_id: str) -> str:
-    return f"doc:{doc_id}"
-
-
-async def create_conversation(r: Redis) -> dict:
+async def create_conversation(pool: AsyncConnectionPool) -> dict:
     cid = uuid.uuid4().hex[:8]
-    now = time.time()
-    await r.hset(conv_key(cid), mapping={"id": cid, "title": DEFAULT_TITLE, "created": now})
-    await r.zadd("convs", {cid: now})  # sorted by creation time
+    await execute(pool, "INSERT INTO conversations (id) VALUES (%s)", (cid,))
     return {"id": cid, "title": DEFAULT_TITLE}
 
 
-async def conversation_exists(r: Redis, cid: str) -> bool:
-    return bool(await r.exists(conv_key(cid)))
+async def conversation_exists(pool: AsyncConnectionPool, cid: str) -> bool:
+    return await one(pool, "SELECT 1 FROM conversations WHERE id = %s", (cid,)) is not None
 
 
-async def list_conversations(r: Redis) -> list[dict]:
-    ids = await r.zrevrange("convs", 0, -1)  # newest first
-    out = []
-    for cid in ids:
-        title = await r.hget(conv_key(cid), "title")
-        out.append({"id": cid, "title": title})
-    return out
+async def list_conversations(pool: AsyncConnectionPool) -> list[dict]:
+    return await many(pool, "SELECT id, title FROM conversations ORDER BY created_at DESC")
 
 
-async def add_message(r: Redis, cid: str, role: str, content: str, sources: list | None = None) -> None:
-    await r.rpush(msgs_key(cid), json.dumps({"role": role, "content": content, "sources": sources or []}))
-    if role == "user" and await r.hget(conv_key(cid), "title") == DEFAULT_TITLE:
-        await r.hset(conv_key(cid), "title", content[:40])
+async def add_message(pool: AsyncConnectionPool, cid: str, role: str, content: str, sources: list | None = None) -> None:
+    await execute(
+        pool,
+        "INSERT INTO messages (conversation_id, role, content, sources) VALUES (%s, %s, %s, %s)",
+        (cid, role, content, Jsonb(sources or [])),
+    )
+    if role == "user":  # the first message names the chat
+        await execute(
+            pool,
+            "UPDATE conversations SET title = %s WHERE id = %s AND title = %s",
+            (content[:40], cid, DEFAULT_TITLE),
+        )
 
 
-async def get_messages(r: Redis, cid: str, limit: int | None = None) -> list[dict]:
-    start = -limit if limit else 0
-    return [json.loads(m) for m in await r.lrange(msgs_key(cid), start, -1)]
+async def get_messages(pool: AsyncConnectionPool, cid: str, limit: int | None = None) -> list[dict]:
+    # Newest N, then put them back in time order.
+    return await many(
+        pool,
+        "SELECT role, content, sources FROM ("
+        "  SELECT id, role, content, sources FROM messages WHERE conversation_id = %s ORDER BY id DESC LIMIT %s"
+        ") recent ORDER BY id",
+        (cid, limit),
+    )
 
 
-async def delete_conversation(r: Redis, cid: str) -> None:
-    doc_ids = await r.smembers(docs_key(cid))
-    keys = [conv_key(cid), msgs_key(cid), docs_key(cid), chunks_key(cid), *[doc_key(d) for d in doc_ids]]
-    await r.delete(*keys)
-    await r.zrem("convs", cid)
+async def delete_conversation(pool: AsyncConnectionPool, cid: str) -> None:
+    await execute(pool, "DELETE FROM conversations WHERE id = %s", (cid,))  # messages go too (ON DELETE CASCADE)
 
 
-async def create_document(r: Redis, cid: str, name: str) -> str:
-    doc_id = uuid.uuid4().hex[:8]
-    await r.hset(doc_key(doc_id), mapping={"id": doc_id, "name": name, "status": "queued", "chunks": 0, "error": ""})
-    await r.sadd(docs_key(cid), doc_id)
-    return doc_id
+async def list_documents(pool: AsyncConnectionPool) -> list[dict]:
+    return await many(pool, "SELECT id, key, title, status, chunks, error FROM documents ORDER BY key")
 
 
-async def list_documents(r: Redis, cid: str) -> list[dict]:
-    docs = [await r.hgetall(doc_key(d)) for d in await r.smembers(docs_key(cid))]
-    return sorted(docs, key=lambda d: d["name"])
+async def queue_documents(pool: AsyncConnectionPool) -> list[int]:
+    """One row per OWASP category. Running it twice resets the rows instead of adding more."""
+    ids = []
+    for key, name, _ in owasp.CATEGORIES:
+        row = await one(
+            pool,
+            "INSERT INTO documents (key, title, url, status) VALUES (%s, %s, %s, 'queued') "
+            "ON CONFLICT (key) DO UPDATE SET status = 'queued', error = '', updated_at = now() RETURNING id",
+            (key, owasp.title(key, name), owasp.page_url(key)),
+        )
+        ids.append(row["id"])
+    return ids
 
 
-async def get_chunks(r: Redis, cid: str) -> list[dict]:
-    return [json.loads(c) for c in await r.lrange(chunks_key(cid), 0, -1)]
+async def ready_chunk_count(pool: AsyncConnectionPool) -> int:
+    return (await one(pool, "SELECT count(*) AS n FROM chunks"))["n"]
 
 
-async def rate_limited(r: Redis, who: str, limit: int) -> bool:
-    # One counter per client per minute. The key expires by itself.
-    key = f"rate:{who}:{int(time.time() // 60)}"
-    count = await r.incr(key)
-    if count == 1:
-        await r.expire(key, 60)
-    return count > limit
+async def search_chunks(pool: AsyncConnectionPool, embedding: list[float], k: int) -> list[dict]:
+    # <=> is pgvector's cosine DISTANCE (0 = same direction). 1 - distance = similarity.
+    rows = await many(
+        pool,
+        "SELECT d.title, d.url, c.content AS text, 1 - (c.embedding <=> %s) AS score "
+        "FROM chunks c JOIN documents d ON d.id = c.document_id "
+        "ORDER BY c.embedding <=> %s LIMIT %s",
+        (np.array(embedding), np.array(embedding), k),
+    )
+    return [{**r, "score": round(float(r["score"]), 4)} for r in rows]

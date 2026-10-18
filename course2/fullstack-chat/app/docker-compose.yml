@@ -1,5 +1,27 @@
 services:
+  postgres:
+    image: pgvector/pgvector:pg17   # Postgres with the pgvector extension installed
+    environment:
+      POSTGRES_USER: chat
+      POSTGRES_PASSWORD: chat
+      POSTGRES_DB: chat
+    ports:
+      - "5432:5432"
+    volumes:
+      - pgdata:/var/lib/postgresql/data   # keeps your data when the container restarts
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U chat"]
+      interval: 3s
+      retries: 20
+
   redis:
     image: redis:7-alpine
     ports:
       - "6379:6379"
+    healthcheck:
+      test: ["CMD", "redis-cli", "ping"]
+      interval: 3s
+      retries: 20
+
+volumes:
+  pgdata:

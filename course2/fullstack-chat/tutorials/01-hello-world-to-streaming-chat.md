@@ -9,7 +9,16 @@
 | 2 | Real AI answers (all at once) |
 | 3 | Answers that **stream** |
 
-This is part 1 of 3. [Part 2](02-redis-memory-and-conversations.md) adds memory and many conversations with **Redis**. [Part 3](03-celery-documents-and-rag.md) adds document upload with **Celery** and answers from your documents (RAG).
+This is part 1 of 4:
+
+| Part | Adds |
+|---|---|
+| **1** | **A streaming chat** |
+| [2](02-postgres-conversations.md) | **Postgres**: saved conversations |
+| [3](03-pgvector-owasp-knowledge-base.md) | **pgvector**: an OWASP Top 10 knowledge base and RAG |
+| [4](04-redis-and-celery.md) | **Redis and Celery**: background loading and rate limiting |
+
+By the end you have an OWASP Top 10 chatbot. Everything is real: real Postgres, Redis, Celery worker and OpenAI API, with no fakes.
 
 New to FastAPI, `fetch` or CORS? [Module 2, Tutorial 1](../../module2/tutorials/01-gradio-concepts-adapted-to-nextjs.md) explains them slowly. This tutorial goes faster.
 
@@ -21,7 +30,7 @@ flowchart LR
     F --> L["OpenAI model"]
 ```
 
-Redis and Celery join in parts 2 and 3. Do we need them? See [the guide](../README.md#do-we-need-redis-and-celery). Short answer: **not yet**. Stages 0 to 3 need neither.
+Postgres joins in part 2, Redis and Celery in part 4. Do we need them? See [the guide](../README.md#do-we-need-redis-and-celery). Short answer: **not yet**. Stages 0 to 3 need neither.
 
 ## Before you start
 
@@ -40,7 +49,7 @@ npx shadcn@latest init -d -y
 npx shadcn@latest add button input textarea badge -y
 ```
 
-Backend packages (`fastapi`, `uvicorn`, `python-multipart`, `celery`, `redis`) are already in the root `pyproject.toml`.
+Backend packages (`fastapi`, `uvicorn`, `celery`, `redis`, `psycopg`, `pgvector` and friends) are already in the root `pyproject.toml`. From part 2 on you also need Docker.
 
 ---
 
@@ -559,4 +568,4 @@ No answers shown. Ask me for a hint.
 | 2 | `llm.ainvoke` | `async` and `await` |
 | 3 | `llm.astream`, SSE, `streamChat` | Streaming, async generators |
 
-Next: [Part 2: Redis memory and conversations](02-redis-memory-and-conversations.md).
+Next: [Part 2: Saved conversations with Postgres](02-postgres-conversations.md).

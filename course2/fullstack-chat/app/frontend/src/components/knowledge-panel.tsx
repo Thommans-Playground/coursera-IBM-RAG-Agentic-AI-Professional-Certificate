@@ -2,26 +2,26 @@
 
 import { useEffect, useState } from "react";
 import { Badge } from "@/components/ui/badge";
-import { Input } from "@/components/ui/input";
-import { listDocuments, uploadDocuments, type DocInfo } from "@/lib/api";
+import { Button } from "@/components/ui/button";
+import { listKnowledge, loadKnowledge, type KbDoc } from "@/lib/api";
 
-export function DocumentsPanel({ cid }: { cid: string }) {
-  const [docs, setDocs] = useState<DocInfo[]>([]);
+export function KnowledgePanel() {
+  const [docs, setDocs] = useState<KbDoc[]>([]);
   const [error, setError] = useState("");
   const [tick, setTick] = useState(0);
 
-  // Poll while any document is still being processed by the worker.
+  // Poll while the worker is still processing any category.
   const pending = docs.some((d) => d.status === "queued" || d.status === "processing");
 
   useEffect(() => {
     let alive = true;
-    listDocuments(cid)
+    listKnowledge()
       .then((d) => alive && setDocs(d))
-      .catch((e) => alive && setError((e as Error).message));
+      .catch(() => alive && setError("Cannot reach the backend. Is uvicorn running on port 8000?"));
     return () => {
       alive = false;
     };
-  }, [cid, tick]);
+  }, [tick]);
 
   useEffect(() => {
     if (!pending) return;
@@ -29,31 +29,33 @@ export function DocumentsPanel({ cid }: { cid: string }) {
     return () => clearTimeout(timer);
   }, [pending, tick]);
 
-  async function onPick(files: FileList | null) {
-    if (!files || files.length === 0) return;
+  async function load() {
     setError("");
     try {
-      await uploadDocuments(cid, files);
+      await loadKnowledge();
       setTick((t) => t + 1);
     } catch (e) {
       setError((e as Error).message);
     }
   }
 
+  const ready = docs.filter((d) => d.status === "ready").length;
+
   return (
     <div className="space-y-2 border-b p-3">
-      <div className="flex items-center gap-3">
-        <label htmlFor="docs" className="text-sm font-medium">
-          Documents for this chat
-        </label>
-        <Input id="docs" type="file" multiple accept=".txt,.md" className="max-w-xs" onChange={(e) => onPick(e.target.files)} />
+      <div className="flex flex-wrap items-center gap-3">
+        <span className="text-sm font-medium">
+          OWASP Top 10:2025 knowledge base ({ready}/{docs.length || 10} ready)
+        </span>
+        <Button size="sm" variant="outline" onClick={load} disabled={pending}>
+          {docs.length === 0 ? "Load OWASP Top 10" : "Reload"}
+        </Button>
       </div>
       {error && <p className="text-sm text-destructive">{error}</p>}
       <div className="flex flex-wrap gap-2">
         {docs.map((d) => (
           <Badge key={d.id} variant={d.status === "failed" ? "destructive" : "secondary"} title={d.error}>
-            {d.name}: {d.status}
-            {d.status === "ready" ? ` (${d.chunks} chunks)` : ""}
+            {d.key}: {d.status}
           </Badge>
         ))}
       </div>

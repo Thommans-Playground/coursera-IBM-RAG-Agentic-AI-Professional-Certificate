@@ -1,9 +1,9 @@
 export const API = process.env.NEXT_PUBLIC_API_URL ?? "http://localhost:8000";
 
 export type Conversation = { id: string; title: string };
-export type Source = { source: string; start_index: number; text: string; score: number };
+export type Source = { title: string; url: string; text: string; score: number };
 export type Message = { role: "user" | "assistant"; content: string; sources?: Source[] };
-export type DocInfo = { id: string; name: string; status: "queued" | "processing" | "ready" | "failed"; chunks: string; error: string };
+export type KbDoc = { id: number; key: string; title: string; status: "queued" | "processing" | "ready" | "failed"; chunks: number; error: string };
 export type ChatEvent =
   | { type: "token"; text: string }
   | { type: "sources"; sources: Source[] }
@@ -24,14 +24,8 @@ export const listConversations = () => send<Conversation[]>("/api/conversations"
 export const createConversation = () => send<Conversation>("/api/conversations", { method: "POST" });
 export const deleteConversation = (id: string) => send(`/api/conversations/${id}`, { method: "DELETE" });
 export const getMessages = (id: string) => send<Message[]>(`/api/conversations/${id}/messages`);
-export const listDocuments = (id: string) => send<DocInfo[]>(`/api/conversations/${id}/documents`);
-
-export function uploadDocuments(id: string, files: FileList) {
-  const form = new FormData();
-  Array.from(files).forEach((f) => form.append("files", f));
-  // No Content-Type header here: the browser adds the multipart boundary itself.
-  return send<{ queued: string[] }>(`/api/conversations/${id}/documents`, { method: "POST", body: form });
-}
+export const listKnowledge = () => send<KbDoc[]>("/api/knowledge");
+export const loadKnowledge = () => send<{ queued: number }>("/api/knowledge/load", { method: "POST" });
 
 // EventSource only supports GET, so we read the POST response stream ourselves.
 export async function* streamChat(id: string, message: string): AsyncGenerator<ChatEvent> {

@@ -1,12 +1,18 @@
 "use client";
 
 import { useEffect, useRef, useState } from "react";
-import { DocumentsPanel } from "@/components/documents-panel";
+import { KnowledgePanel } from "@/components/knowledge-panel";
 import { Button } from "@/components/ui/button";
 import { Textarea } from "@/components/ui/textarea";
 import { getMessages, streamChat, type Message } from "@/lib/api";
 
 type Props = { cid: string; onActivity: () => void };
+
+const STARTERS = [
+  "What is the number one risk in the OWASP Top 10:2025?",
+  "How do I prevent SQL injection?",
+  "What changed in 2025 compared to before?",
+];
 
 export function ChatView({ cid, onActivity }: Props) {
   const [messages, setMessages] = useState<Message[]>([]);
@@ -29,8 +35,8 @@ export function ChatView({ cid, onActivity }: Props) {
     bottom.current?.scrollIntoView({ behavior: "smooth" });
   }, [messages]);
 
-  async function send() {
-    const text = input.trim();
+  async function send(override?: string) {
+    const text = (override ?? input).trim();
     if (!text || busy) return;
     setBusy(true);
     setError("");
@@ -55,7 +61,7 @@ export function ChatView({ cid, onActivity }: Props) {
 
   return (
     <div className="flex min-w-0 flex-1 flex-col">
-      <DocumentsPanel cid={cid} />
+      <KnowledgePanel />
       <div className="flex-1 space-y-4 overflow-y-auto p-4">
         {messages.map((m, i) => (
           <div key={i} className={m.role === "user" ? "ml-auto max-w-[80%] rounded-lg bg-muted p-3" : "max-w-[80%] p-3"}>
@@ -66,7 +72,10 @@ export function ChatView({ cid, onActivity }: Props) {
                 <ul className="mt-1 space-y-1">
                   {m.sources.map((s, j) => (
                     <li key={j} className="rounded border p-2">
-                      {s.source} at character {s.start_index}, score {s.score}
+                      <a href={s.url} target="_blank" rel="noreferrer" className="font-medium underline">
+                        {s.title}
+                      </a>{" "}
+                      (similarity {s.score})
                       <p className="line-clamp-3">{s.text}</p>
                     </li>
                   ))}
@@ -75,13 +84,22 @@ export function ChatView({ cid, onActivity }: Props) {
             )}
           </div>
         ))}
+        {messages.length === 0 && (
+          <div className="flex flex-wrap gap-2">
+            {STARTERS.map((q) => (
+              <Button key={q} variant="outline" size="sm" onClick={() => send(q)} disabled={busy}>
+                {q}
+              </Button>
+            ))}
+          </div>
+        )}
         <div ref={bottom} />
       </div>
       {error && <p className="px-4 text-sm text-destructive">{error}</p>}
       <div className="flex gap-2 border-t p-3">
         <Textarea
           value={input}
-          placeholder="Message..."
+          placeholder="Ask about the OWASP Top 10..."
           onChange={(e) => setInput(e.target.value)}
           onKeyDown={(e) => {
             if (e.key === "Enter" && !e.shiftKey) {
@@ -90,7 +108,7 @@ export function ChatView({ cid, onActivity }: Props) {
             }
           }}
         />
-        <Button onClick={send} disabled={busy}>
+        <Button onClick={() => send()} disabled={busy}>
           Send
         </Button>
       </div>

@@ -1,22 +1,27 @@
-# Full-Stack Chat App: Next.js + FastAPI + Redis + Celery
+# Full-Stack OWASP Top 10 Chatbot: Next.js + FastAPI + Postgres (pgvector) + Redis + Celery
 
-A follow-along guide to building a ChatGPT-style app from a **hello world** up to a chat that streams answers, remembers conversations, and answers from your own documents.
+A follow-along guide that starts from a **hello world** and ends with a ChatGPT-style assistant that answers questions about the **OWASP Top 10:2025**. It cites the category, links to owasp.org, and says "I don't know" when the pages do not cover your question.
+
+**Everything is real.** Real Postgres with pgvector, real Redis, a real Celery worker and the real OpenAI API, all running on your machine. There are no fakes or mocks. The final test runs against the live stack.
 
 | Layer | Tech | Job |
 |---|---|---|
 | Frontend | Next.js, TypeScript, Tailwind CSS, shadcn/ui | The page |
 | Backend | FastAPI (Python, async) | API, streaming, validation |
+| Database and vector store | PostgreSQL 17 + pgvector | Chats, messages, documents, embeddings, similarity search |
+| Queue and counters | Redis | Celery job queue, rate limiting |
+| Background jobs | Celery | Download, split and embed the OWASP pages |
 | AI | LangChain + OpenAI | Chat model and embeddings |
-| Storage and queue | Redis | Conversations, messages, counters, job queue |
-| Background jobs | Celery | Slow work: indexing documents |
 
-**How to use this guide:** do the three tutorials in order. Each ends with a working app. A finished copy is in [app/](app/) for comparison.
+> **Content and license.** The OWASP Top 10 text is published by the OWASP Foundation under [CC BY-SA 4.0](https://creativecommons.org/licenses/by-sa/4.0/) ([source](https://github.com/OWASP/Top10)). The app downloads it at load time and links back to owasp.org.
+
+**How to use this guide:** do the four tutorials in order. Each ends with a working app. A finished copy is in [app/](app/).
 
 ## Contents
 
 1. [The tutorials](#1-the-tutorials)
 2. [Architecture](#2-architecture)
-3. [Do we need Redis and Celery?](#do-we-need-redis-and-celery)
+3. [Why these pieces?](#3-why-these-pieces)
 4. [Ideas to learn](#4-ideas-to-learn)
 5. [Run the finished app](#5-run-the-finished-app)
 6. [Cheat sheet](#6-cheat-sheet)
@@ -28,9 +33,10 @@ A follow-along guide to building a ChatGPT-style app from a **hello world** up t
 
 | Part | You start with | You end with |
 |---|---|---|
-| [1: Hello world to streaming chat](tutorials/01-hello-world-to-streaming-chat.md) | An empty folder | A page where AI answers stream word by word |
-| [2: Memory and many conversations with Redis](tutorials/02-redis-memory-and-conversations.md) | Part 1 | A sidebar of saved conversations, history sent to the model, a rate limit |
-| [3: Documents with Celery, and RAG](tutorials/03-celery-documents-and-rag.md) | Part 2 | File upload processed by a worker, answers with sources |
+| [1: Hello world to streaming chat](tutorials/01-hello-world-to-streaming-chat.md) | An empty folder | AI answers that stream word by word |
+| [2: Saved conversations with Postgres](tutorials/02-postgres-conversations.md) | Part 1 | A sidebar of saved chats, history sent to the model |
+| [3: pgvector and an OWASP knowledge base](tutorials/03-pgvector-owasp-knowledge-base.md) | Part 2 | RAG: sourced answers from the OWASP pages |
+| [4: Redis and Celery](tutorials/04-redis-and-celery.md) | Part 3 | Background loading with a status panel, a rate limit, a live test |
 
 Related: the course apps [module 1](../module1/app/) and [module 2](../module2/app/) use the same Next.js and FastAPI pairing for the RAG labs.
 
@@ -42,28 +48,31 @@ Related: the course apps [module 1](../module1/app/) and [module 2](../module2/a
 flowchart TB
     subgraph Browser["Browser: Next.js on port 3000"]
         SB["Sidebar"]
-        CV["ChatView: streams tokens"]
-        DP["DocumentsPanel: polls status"]
+        CV["ChatView: streams tokens, shows sources"]
+        KP["KnowledgePanel: polls status"]
     end
     subgraph API["FastAPI on port 8000"]
         CO["/conversations"]
         CH["/chat: server-sent events"]
-        DO["/documents: upload"]
+        KN["/knowledge: load and status"]
     end
     subgraph Worker["Celery worker"]
-        IN["ingest: split and embed"]
+        IN["ingest_document: fetch, split, embed"]
     end
-    R[("Redis")]
-    SB --> CO --> R
-    CV --> CH --> R
-    DP --> DO --> R
-    DO -->|"enqueue job"| R
-    R -->|"job"| IN --> R
+    PG[("Postgres + pgvector")]
+    RD[("Redis")]
+    SB --> CO --> PG
+    CV --> CH --> PG
+    CH --> RD
+    KP --> KN --> PG
+    KN -->|"enqueue"| RD
+    RD -->|"job"| IN --> PG
     CH --> M["OpenAI"]
     IN --> M
+    IN --> GH["OWASP pages on GitHub"]
 ```
 
-**Five processes run when you use the whole app:** Redis, the API, the Celery worker, the Next.js dev server and your browser.
+**Six things run when you use the whole app:** Postgres, Redis, the API, the Celery worker, the Next.js dev server and your browser.
 
 A chat message, step by step:
 
@@ -72,73 +81,74 @@ sequenceDiagram
     participant P as Page
     participant A as FastAPI
     participant R as Redis
+    participant D as Postgres
     participant M as OpenAI
-    P->>A: message
-    A->>R: rate limit check, read history and chunks
+    P->>A: "How do I prevent it?"
+    A->>R: rate limit counter
+    A->>D: last 10 messages
+    A->>M: rewrite as a standalone question
     A->>M: embed the question
-    A->>A: find the closest chunks
+    A->>D: nearest 4 chunks by cosine distance
     A->>M: history, context, question
     M-->>A: tokens
-    A-->>P: tokens as events
-    A->>R: save answer and sources
+    A-->>P: tokens as events, then sources
+    A->>D: save the answer with its sources
 ```
 
 ---
 
-<a id="do-we-need-redis-and-celery"></a>
+## 3. Why these pieces?
 
-## 3. Do we need Redis and Celery?
+Each piece is added only when a problem demands it.
 
-**Short answer.** For a one-person demo, no. For an app with several users, saved chats and file uploads, **Redis is worth it, and Celery is worth it for one job: document indexing.** Not for the chat itself.
+| Piece | Added when | Problem it solves |
+|---|---|---|
+| FastAPI streaming | Part 1 | Waiting for a full answer feels slow |
+| Postgres | Part 2 | A chat must be remembered, durably |
+| pgvector | Part 3 | We need similarity search, and we already have Postgres |
+| Redis + Celery | Part 4 | Loading documents is slow, and spam costs money |
 
 | Question | Answer |
 |---|---|
-| Does streaming a chat answer need Celery? | **No.** A stream needs a live connection to the browser. A queue adds delay and moving parts. FastAPI's `async` handles it. |
-| Does indexing a document need Celery? | **Yes, ideally.** It is slow (embedding calls), it can fail and be retried, and the user should not wait on a spinner. |
-| What does Redis do here? | Stores chats and messages, counts requests for rate limiting, holds the Celery job queue, and (in this app) holds the embedded chunks so the worker and API can share them. |
-| Could we skip Redis? | For history, a Python list works for one user and one process (that is stages 0 to 3). With a separate worker process, **shared state must live outside Python memory**, and Redis is the simplest place. |
+| Why Postgres for the vectors, not a separate vector database? | One database for chats, documents and vectors: fewer things to run, and you can join vectors to normal tables (the search query joins `chunks` to `documents`). A dedicated vector database makes sense at very large scale. |
+| Does the chat stream need Celery? | **No.** A stream needs a live connection to the browser. A queue adds delay. FastAPI's `async` handles it. |
+| Does loading documents need Celery? | **Yes, ideally.** It is slow, it can fail and be retried, and the user should not wait on a spinner. |
+| What does Redis do here? | Holds the Celery queue and the rate-limit counters. Chats and documents live in Postgres, because they must not be lost. |
+| Could we skip Celery? | For ten pages, `BackgroundTasks` in FastAPI would work. A queue and worker become worthwhile with many documents, retries, several users, or scheduled reloads. The tutorial uses Celery so you learn the pattern. |
 
-When something simpler is enough:
-
-| Situation | Simpler choice |
-|---|---|
-| Small jobs, same server, losing a job is fine | FastAPI `BackgroundTasks` (no Redis, no worker) |
-| You want a lighter queue than Celery | RQ or ARQ (also Redis based) |
-| Messages must never be lost, need search and reports | PostgreSQL for messages, Redis as cache, limiter and queue |
-| Thousands of chunks per user | A real vector index (Redis Stack search, Chroma, FAISS, pgvector) instead of comparing vectors by hand |
-
-**Honest trade-off.** Each extra piece is one more thing to install, run, monitor and debug (this app goes from 2 processes to 5). That is why the tutorials add them **one at a time, only when a problem demands it**: Redis when the chat must remember, Celery when indexing is too slow to wait for.
+**Honest trade-off.** Each extra piece is one more thing to install, run and debug. This app goes from 2 processes in part 1 to 6 at the end.
 
 ---
 
 ## 4. Ideas to learn
 
-| Idea | Where it appears |
+| Idea | Where |
 |---|---|
-| Client and server talk over HTTP; CORS | Part 1, stage 0 |
-| JSON contracts and validation (`422`) | Part 1, stage 1 |
-| `async` and `await` | Part 1, stage 2 |
-| Streaming with server-sent events and async generators | Part 1, stage 3 |
-| Redis keys, hashes, lists, sets, sorted sets, `EXPIRE` | Part 2 |
-| Models have no memory, we resend history | Part 2 |
-| Rate limiting with an expiring counter | Part 2 |
-| Task queue, broker, worker, `.delay()` | Part 3 |
-| Polling for job status | Part 3 |
-| RAG: embed, retrieve with cosine similarity, answer with sources | Part 3 |
-| Testing with fakes: fakeredis, fake models, eager Celery | Part 3 |
+| Client and server over HTTP; CORS | Part 1 |
+| JSON contracts and validation (`422`) | Part 1 |
+| `async` and `await`; streaming with server-sent events | Part 1 |
+| Tables, foreign keys, `ON DELETE CASCADE`, parameterized SQL | Part 2 |
+| Connection pools; app lifespan | Part 2 |
+| The model has no memory: we resend history | Part 2 |
+| Embeddings, cosine distance, `<=>`, HNSW index | Part 3 |
+| Cleaning and chunking Markdown; putting the title in front for embedding | Part 3 |
+| RAG: rewrite, retrieve, answer, cite; similarity as a "do I know this" signal | Part 3 |
+| Task queue, broker, worker, `.delay()`, upserts, polling | Part 4 |
+| Rate limiting with `INCR` and `EXPIRE` | Part 4 |
+| Testing the real stack | Part 4 |
 
 ---
 
 ## 5. Run the finished app
 
-You need `OPENAI_API_KEY` in the repo-root `.env`. Packages are in the root `pyproject.toml`. Use four terminals:
+You need Docker, Node.js 20+, and `OPENAI_API_KEY` in the repo-root `.env`. Packages are in the root `pyproject.toml`. Use four terminals:
 
 ```bash
-# 1. Redis (needs Docker)
+# 1. Postgres (with pgvector) and Redis
 cd course2/fullstack-chat/app
 docker compose up -d
 
-# 2. API
+# 2. API (creates the tables on start)
 cd course2/fullstack-chat/app/backend
 uv run uvicorn main:app --reload --port 8000
 
@@ -151,16 +161,19 @@ npm install
 npm run dev
 ```
 
-Open http://localhost:3000. API docs: http://localhost:8000/docs.
+Open http://localhost:3000, press **Load OWASP Top 10**, wait for ten `ready` badges, and ask a question. API docs: http://localhost:8000/docs.
 
-Free checks (no Redis, no OpenAI, no worker):
+**Test the real stack** (needs steps 1 to 3 running; costs a fraction of a cent):
 
 ```bash
-cd course2/fullstack-chat/app/backend && uv run python -c "import test_api; test_api.test_all(); print('ok')"
-cd ../frontend && npx tsc --noEmit && npm run lint && npm run build
+cd course2/fullstack-chat/app/backend && uv run python test_live.py
 ```
 
-Packages added to the root `pyproject.toml` for this guide: `celery`, `redis`, and `fakeredis` (dev only).
+Frontend checks: `cd app/frontend && npx tsc --noEmit && npm run lint && npm run build`.
+
+Stop everything with `docker compose down` (add `-v` to also delete the data).
+
+Packages added to the root `pyproject.toml` for this guide: `celery`, `redis`, `psycopg[binary]`, `psycopg-pool`, `pgvector`, `httpx`.
 
 ---
 
@@ -171,58 +184,64 @@ Packages added to the root `pyproject.toml` for this guide: `celery`, `redis`, a
 | Endpoint | A web address that runs a function. |
 | CORS | Browser rule: the API must allow the page's origin. |
 | SSE | Server-sent events: a response made of small `data:` messages. |
-| Async generator | A function that `yield`s values over time (`async def` with `yield`). |
-| Token | A piece of text the model produces. |
-| Redis | Fast in-memory database with simple structures. |
-| Hash / list / set / sorted set | Dictionary / ordered items / unique items / items ordered by score. |
-| `EXPIRE` | Makes a key delete itself after N seconds. |
-| Celery | A task queue: web server enqueues, a worker runs. |
-| Broker | The queue Celery uses (Redis here). |
-| Worker | A separate process that runs queued jobs. |
-| `.delay()` | Enqueue a Celery task and return at once. |
-| Polling | Asking repeatedly "is it done yet?". |
-| Eager mode | Celery runs tasks inline, for tests. |
+| Async generator | A function that `yield`s values over time. |
+| Foreign key | A column pointing at a row in another table. |
+| Cascade | Delete children when the parent is deleted. |
+| Connection pool | A few open database connections that requests borrow. |
+| Parameterized query | `%s` plus values, never string gluing. Stops SQL injection. |
+| Embedding | A vector of numbers capturing meaning (1536 here). |
+| pgvector | Postgres extension for vectors. |
+| `<=>` | Cosine distance. Similarity is `1 - distance`. |
+| HNSW | A fast approximate nearest-neighbour index. |
+| Chunk | A small piece of a document. |
 | RAG | Retrieve relevant text, add to the prompt, then generate. |
-| Cosine similarity | Closeness of two vectors by direction. |
+| Celery | A task queue: the API enqueues, a worker runs. |
+| `.delay()` | Enqueue a task and return at once. |
+| Upsert | `INSERT ... ON CONFLICT DO UPDATE`. |
+| Polling | Asking repeatedly "is it done yet?". |
 
 | Command | Does |
 |---|---|
-| `docker compose up -d` | Start Redis |
+| `docker compose up -d` | Start Postgres and Redis |
 | `uv run uvicorn main:app --reload --port 8000` | Start the API |
 | `uv run celery -A tasks worker --loglevel=info --pool=solo` | Start the worker |
 | `npm run dev` | Start the page |
-| `redis-cli keys '*'` | See what is stored |
+| `docker compose exec postgres psql -U chat chat` | SQL prompt |
+| `docker compose exec redis redis-cli` | Redis prompt |
+| `uv run python test_live.py` | Test the real stack |
 
 ---
 
 ## 7. Self-quiz
 
 1. Why does the page need CORS permission to call the API?
-2. Why does streaming use `fetch` and a reader instead of `EventSource`?
-3. The model "remembers" earlier messages. How, if it has no memory?
-4. Which Redis type keeps messages in order? Which keeps chats newest-first?
-5. How does `EXPIRE` help a rate limiter?
-6. What does `ingest.delay(...)` do, and what does it not do?
-7. Why can't the worker keep chunks in a Python list?
-8. Why does the page poll for document status?
-9. Why is chat streaming not a Celery job?
-10. What happens to a document if the worker is not running?
-11. What would you change for thousands of chunks per user?
+2. How does the model "remember" earlier messages?
+3. What does `ON DELETE CASCADE` do for messages?
+4. Why pass SQL values as `%s` parameters?
+5. What does `1 - (embedding <=> query)` give you?
+6. Why do we embed the question with the same model as the chunks?
+7. Why is a follow-up like "How do I prevent it?" rewritten before searching?
+8. What does a low top similarity (about 0.1) tell you?
+9. What does `ingest_document.delay(id)` do, and what does it not do?
+10. Why does the page poll for status?
+11. Why is chat streaming not a Celery job?
+12. Why does `INCR` plus `EXPIRE` make a rate limiter?
 
 <details>
 <summary>Show answers</summary>
 
 1. The page (port 3000) and API (port 8000) are different origins. Browsers block the call unless the API allows the page's origin.
-2. `EventSource` only makes GET requests. We need POST with a message body, so we read the response stream with `fetch`.
-3. We resend the recent history with every request. The model just reads it again.
-4. A list (`RPUSH`, `LRANGE`) keeps messages in order. A sorted set (`ZADD` with the time as score, `ZREVRANGE`) lists chats newest first.
-5. The counter key is per client per minute and expires after 60 seconds, so the count resets without any cleanup code.
-6. It puts a job message on the Redis queue and returns immediately. It does not run the function. A worker runs it later.
-7. The worker and the API are separate processes with separate memory. Shared data must live in something both can reach, such as Redis.
-8. The worker cannot push a result to the browser. The page asks for the status every second or two until nothing is queued or processing.
-9. A streaming answer needs a live connection to the browser, and a queue would add delay and complexity. Celery is for slow work that can finish later.
-10. Its status stays `queued` forever.
-11. Use a real vector index (Redis Stack search, Chroma, FAISS or pgvector) instead of comparing every vector with numpy.
+2. We resend the recent history with every request. The model just reads it again.
+3. Deleting a conversation also deletes its messages, so nothing is left orphaned.
+4. The database treats parameters as data, never as SQL, so a user cannot inject commands.
+5. The cosine similarity: 1 means the same direction, near 0 means unrelated.
+6. Vectors from different models live in different "number spaces", so comparing them means nothing.
+7. The vector of a question with no topic words matches nothing. The rewrite makes it standalone ("How do I prevent SQL injection?").
+8. Nothing relevant is stored, so the bot should say it does not know instead of making something up.
+9. It puts a job message on the Redis queue and returns immediately. It does not run the function. A worker runs it later.
+10. The worker cannot push a result to the browser. The page asks every second or two until nothing is queued or processing.
+11. A stream needs a live connection to the browser, and a queue adds delay and complexity. Celery is for slow work that can finish later.
+12. `INCR` counts requests for the current minute. `EXPIRE` removes the counter after 60 seconds, so each minute starts fresh with no cleanup code.
 
 </details>
 
@@ -230,6 +249,7 @@ Packages added to the root `pyproject.toml` for this guide: `celery`, `redis`, a
 
 ### Notes on this guide
 
-- Next.js, shadcn/ui, FastAPI and Celery change quickly. If a generated file differs from the tutorials, trust the generated one. The ideas do not change.
-- The finished app keeps chunks and vectors in Redis lists for clarity. It is a teaching design, not a scaling design.
-- Redis in a plain container keeps data in memory. The tutorial's practice section shows how to persist it.
+- Next.js, shadcn/ui, FastAPI and Celery change quickly. If a generated file differs from the tutorials, trust the generated one.
+- The `test_live.py` assertions check facts that must hold (right category in the sources, "I don't know" with low similarity), not exact wording, because model text varies.
+- The OWASP pages are fetched from GitHub at load time. If OWASP reorganizes the repository, update `RAW` in `owasp.py`.
+- Embedding vectors are 1536 numbers for `text-embedding-3-small`. If you change the model, change `vector(1536)` in `schema.sql` too.

@@ -13,8 +13,8 @@ const geistMono = Geist_Mono({
 });
 
 export const metadata: Metadata = {
-  title: "Full-stack chat",
-  description: "Chat with streaming, memory and your documents",
+  title: "OWASP Top 10 chat",
+  description: "Ask questions about the OWASP Top 10:2025",
 };
 
 export default function RootLayout({ children }: LayoutProps<"/">) {
