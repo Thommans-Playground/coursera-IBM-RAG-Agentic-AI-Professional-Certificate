@@ -4,7 +4,7 @@ The result of [the four tutorials](../tutorials/). Compare your own `my-chat/` f
 
 ```text
 app/
-  docker-compose.yml      Postgres (with pgvector) and Redis
+  docker-compose.yml      Postgres (with pgvector), Redis, API, worker, page: one command
   backend/                FastAPI, Celery, LangChain
     main.py  chat.py  conversations.py  knowledge.py   routes
     schema.sql  db.py  store.py  deps.py  settings.py  Postgres and config
@@ -14,6 +14,6 @@ app/
   frontend/               Next.js, TypeScript, Tailwind, shadcn/ui
 ```
 
-Run instructions are in the [guide](../README.md#5-run-the-finished-app). In short: `docker compose up -d`, then in `backend/`: `uv run uvicorn main:app --reload --port 8000` and `uv run celery -A tasks worker --loglevel=info --pool=solo`, and `npm run dev` in `frontend/`. Press **Load OWASP Top 10** in the page.
+Run instructions are in the [guide](../README.md#5-run-the-finished-app). In short: `cp .env.example .env` (add your key) and `docker compose up --build`. For development: `docker compose up -d postgres redis`, then in `backend/`: `uv run uvicorn main:app --reload --port 8000` and `uv run celery -A tasks worker --loglevel=info --pool=solo`, and `npm run dev` in `frontend/`. Press **Load OWASP Top 10** in the page.
 
 Content from the OWASP Top 10:2025 is © OWASP Foundation, [CC BY-SA 4.0](https://creativecommons.org/licenses/by-sa/4.0/).

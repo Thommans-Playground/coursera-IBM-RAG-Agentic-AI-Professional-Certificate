@@ -1,4 +1,5 @@
 """The RAG engine: split, embed, store, retrieve, answer. No web code in here."""
+import os
 from pathlib import Path
 
 from dotenv import load_dotenv
@@ -30,7 +31,9 @@ REWRITE_PROMPT = ChatPromptTemplate.from_messages([
 ])
 
 # Course notes from module 1, so the bot has something to read on first start.
-SEED_FILE = Path(__file__).resolve().parents[2].parent / "module1" / "transcript.md"
+# SEED_FILE lets a container mount the notes at another path.
+# The default is course2/module1/transcript.md. `.parent` stops at the root, so it never raises.
+SEED_FILE = Path(os.getenv("SEED_FILE") or Path(__file__).resolve().parent.parent.parent.parent / "module1" / "transcript.md")
 
 
 class RagEngine:

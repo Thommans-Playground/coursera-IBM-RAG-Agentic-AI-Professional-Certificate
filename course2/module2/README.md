@@ -247,10 +247,12 @@ npm run dev
 
 Open http://localhost:3000. API docs and a built-in test page: http://localhost:8000/docs.
 
-Free checks (no API calls):
+Or run everything with Docker: `cd course2/module2/app && cp .env.example .env` (add your key), then `docker compose up --build`.
+
+Test the real stack (needs the backend running, costs a fraction of a cent):
 
 ```bash
-cd course2/module2/app/backend && uv run python -c "import test_api; test_api.test_all(); print('ok')"
+cd course2/module2/app/backend && uv run python test_live.py
 cd ../frontend && npx tsc --noEmit && npm run lint && npm run build
 ```
 

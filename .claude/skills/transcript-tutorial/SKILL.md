@@ -27,6 +27,19 @@ Why the project flavour: a catalogue of parts is hard to remember because the le
 
 Cross-link the two tutorials at the top and bottom, and add a short "Hands-on tutorials" section to the module README.
 
+## Web app tutorials (the standard shape)
+
+When the tutorial builds a web app (a frontend plus a backend, for example Next.js with FastAPI), use this shape every time. The reader should always have a working app and always know what to type next.
+
+1. **Start from a hello world.** Stage 0 is one backend endpoint and one page that shows its message. Then a chat or form that echoes. Only then add the real feature. Every stage runs on its own.
+2. **One idea per stage, problem first.** Each stage opens with the problem the reader just hit, then the fix. Add each technology (a database, a vector store, Redis, Celery) only at the stage whose problem needs it, and say why it is needed there.
+3. **Real services, no fakes.** Use the real database, queue and model API. Do not teach or ship fake models, fake Redis or mocks. Test with a live test against the running stack (`test_live.py`), and make its assertions check facts that must hold, not exact LLM wording.
+4. **Finish with Docker, built step by step.** The last stage builds the `Dockerfile` for each service and `docker-compose.yml` piece by piece, explaining each line. Standard practice: pinned dependencies, layer caching (install before copying code), non-root user, health checks, `depends_on` with `service_healthy`, a named volume for data, secrets from `.env` with a fail-fast message, a fixed compose `name:` so apps do not share volumes, and a note that `NEXT_PUBLIC_*` values are baked in at build time.
+5. **Ship a finished copy** in an `app/` folder next to the tutorials, with a README that has the Docker one-liner, a no-Docker path, and the live test command.
+6. **Verify for real.** Rebuild the app from the tutorial's own code blocks into a scratch folder (mark file blocks `# needs: ... (file: NAME)` or `(file: NAME, append)` so they can be assembled), start the real services, and run the live test against that rebuild. Also compare the tutorial's frontend blocks with the real files. Run the Docker build too and check health and a real request.
+
+Concept-only tutorials (a study guide, or notebook-style code) keep the shapes in the next section. This standard is for tutorials that build an app.
+
 ## Steps
 
 ### 1. Clean the transcript

@@ -18,11 +18,13 @@ A finished copy is in [../app/](../app/), and you can run it with one command: s
 
 ```mermaid
 flowchart LR
-    S0["0 Start Postgres"] --> S1["1 Pipeline in cells, now a Lab class"]
-    S1 --> S2["2 Cannot see the chunks"]
-    S2 --> S3["3 Cannot see what retrieval returns"]
-    S3 --> S4["4 Bot makes things up"]
-    S4 --> S5["5 Bot forgets"]
+    S0["0 Hello world"] --> S1["1 Start Postgres"]
+    S1 --> S2["2 Pipeline in cells, now a Lab class"]
+    S2 --> S3["3 Cannot see the chunks"]
+    S3 --> S4["4 Cannot see what retrieval returns"]
+    S4 --> S5["5 Bot makes things up"]
+    S5 --> S6["6 Bot forgets"]
+    S6 --> S7["7 One command: Docker"]
 ```
 
 ## Before you start
@@ -42,7 +44,90 @@ Real API calls cost a few cents. Embedding the policy file takes a fraction of a
 
 ---
 
-## Step 0: Start Postgres
+## Step 0: Hello world
+
+### The idea
+
+Before any database or AI, prove that the two programs can talk. The backend answers on port 8000. The page, on port 3000, asks it a question with `fetch` and shows the reply.
+
+```mermaid
+sequenceDiagram
+    participant P as Page, port 3000
+    participant A as FastAPI, port 8000
+    P->>A: GET /api/hello
+    A-->>P: message
+```
+
+### Type this
+
+Create `backend/main.py`:
+
+```python
+# needs: your backend folder (file: hello_main.py)
+from fastapi import FastAPI
+from fastapi.middleware.cors import CORSMiddleware
+
+app = FastAPI()
+
+# The page and the API run on different ports, so the browser needs permission (CORS).
+app.add_middleware(
+    CORSMiddleware,
+    allow_origins=["http://localhost:3000", "http://127.0.0.1:3000"],
+    allow_methods=["*"],
+    allow_headers=["*"],
+)
+
+
+@app.get("/api/hello")
+def hello():
+    return {"message": "Hello from FastAPI"}
+```
+
+Run it from `backend/`, inside the repo so `uv` uses the shared environment:
+
+```bash
+cd course2/module1/my-lab/backend
+uv run uvicorn main:app --reload --port 8000
+```
+
+Open http://localhost:8000/api/hello. You should see `{"message":"Hello from FastAPI"}`. Also open http://localhost:8000/docs for a free test page.
+
+Now the page. Replace `frontend/src/app/page.tsx`:
+
+```tsx
+"use client";
+
+import { useEffect, useState } from "react";
+
+export default function Home() {
+  const [message, setMessage] = useState("Loading...");
+
+  useEffect(() => {
+    fetch("http://localhost:8000/api/hello")
+      .then((res) => res.json())
+      .then((data) => setMessage(data.message))
+      .catch(() => setMessage("Cannot reach the backend. Is uvicorn running?"));
+  }, []);
+
+  return <main className="p-6 text-xl">{message}</main>;
+}
+```
+
+In a second terminal run `npm run dev` inside `frontend/`, then open http://localhost:3000.
+
+**What you should see:** "Hello from FastAPI". Stop uvicorn and refresh: you see the "Cannot reach" text instead.
+
+### Why it works
+
+`"use client"` marks a component that uses state and effects, so it runs in the browser. `useEffect` with `[]` runs once when the page opens. `CORSMiddleware` is needed because port 3000 and port 8000 are different origins, and browsers block the call unless the API allows it.
+
+### Check yourself
+
+What happens if you remove `CORSMiddleware`? (Try it and read the browser console.)
+
+---
+
+## Step 1: Start Postgres
 
 ### The idea
 
@@ -93,7 +178,7 @@ docker compose exec postgres psql -U lab lab -c "select version();"
 
 ---
 
-## Step 1: The pipeline is stuck in notebook cells
+## Step 2: The pipeline is stuck in notebook cells
 
 ### The problem
 
@@ -278,7 +363,7 @@ Run the snippet again. Does the count stay `16`? (It deletes the old rows first.
 
 ---
 
-## Step 2: I cannot see the chunks
+## Step 3: I cannot see the chunks
 
 ### The problem
 
@@ -302,7 +387,7 @@ sequenceDiagram
 
 ### Type this
 
-Create `backend/main.py`. A **lifespan** function runs at server start and stop: it creates the tables, opens the pool, builds the first index (only if the database is empty) and closes the pool at the end:
+Replace `backend/main.py` (the hello world version goes away). A **lifespan** function runs at server start and stop: it creates the tables, opens the pool, builds the first index (only if the database is empty) and closes the pool at the end:
 
 ```python
 # needs: your backend folder (file: main.py)
@@ -551,7 +636,7 @@ The page asks the backend for chunks and draws a bar per chunk, scaled to the lo
 
 ---
 
-## Step 3: I cannot see what retrieval returns
+## Step 4: I cannot see what retrieval returns
 
 ### The problem
 
@@ -705,7 +790,7 @@ The question is embedded with the **same** model as the chunks, then Postgres re
 
 ---
 
-## Step 4: The bot makes things up
+## Step 5: The bot makes things up
 
 ### The problem
 
@@ -725,7 +810,7 @@ flowchart LR
 
 ### Type this
 
-Create `backend/qa.py` with the two prompts from the lab and a function that answers. For now it ignores `history` (step 5 uses it):
+Create `backend/qa.py` with the two prompts from the lab and a function that answers. For now it ignores `history` (step 6 uses it):
 
 ```python
 # needs: your backend folder (file: qa.py)
@@ -754,7 +839,7 @@ def answer(lab: Lab, question: str, k: int, strict: bool, history: list[dict]):
     return reply, question, hits
 ```
 
-In `main.py`, add the endpoint. The request already has a `history` field for step 5:
+In `main.py`, add the endpoint. The request already has a `history` field for step 6:
 
 ```python
 # needs: your backend folder (file: main.py, append)
@@ -797,7 +882,7 @@ Send the eat-in-vehicles question with `strict` false, then true. Compare. Which
 
 ---
 
-## Step 5: The bot forgets, so we add memory and a chat page
+## Step 6: The bot forgets, so we add memory and a chat page
 
 ### The problem
 
@@ -1120,17 +1205,288 @@ uv run python test_live.py
 
 ---
 
-## Run it all with Docker
+## Step 7: Run it with Docker
 
-The finished app in [../app/](../app/) has a `docker-compose.yml` with three services: `postgres` (pgvector), `backend` and `frontend`. One command starts them:
+### The problem
+
+To run the app you now need Python and its packages, Node and its packages, a Postgres container, the right environment variables, and several terminals. A friend (or you in six months) will get at least one of those wrong.
+
+### The fix: one command
+
+**Docker** packages each part with everything it needs into an **image**, and **Docker Compose** starts all the parts together from one file. You will write three kinds of files:
+
+| File | Job |
+|---|---|
+| `backend/Dockerfile` | Recipe for the backend image |
+| `frontend/Dockerfile` | Recipe for the frontend image |
+| `docker-compose.yml` | Starts and connects the services |
+
+```mermaid
+flowchart LR
+    C["docker compose up"] --> P[("postgres")] --> B["backend image, port 8000"]
+    C --> F["frontend image, port 3000"]
+    F -.->|"browser calls"| B
+```
+
+### Type this
+
+**1. Pin the backend's packages.** In the Docker image there is no repo-wide environment, so list exactly what the backend needs. Create `backend/requirements.txt`. Pinned versions mean the image builds the same way next year:
+
+```text
+# Only what this app needs, pinned to the versions it was tested with.
+fastapi==0.143.3
+uvicorn[standard]==0.54.0
+langchain-core==1.6.10
+langchain-openai==1.7.2
+langchain-text-splitters==1.1.3
+python-dotenv==1.2.4
+pydantic==2.14.1
+httpx==0.28.1
+numpy==2.5.4
+psycopg[binary]==3.3.6
+psycopg-pool==3.3.3
+pgvector==0.5.1
+```
+
+**2. The backend Dockerfile.** Create `backend/Dockerfile`. Read it in four pieces. Type them one after another into the same file.
+
+Start from a small Python image and set sane defaults:
+
+```dockerfile
+# syntax=docker/dockerfile:1
+FROM python:3.14-slim AS base
+
+ENV PYTHONDONTWRITEBYTECODE=1 \
+    PYTHONUNBUFFERED=1 \
+    PIP_NO_CACHE_DIR=1 \
+    PIP_DISABLE_PIP_VERSION_CHECK=1
+
+WORKDIR /app
+```
+
+Install the dependencies **before** copying your code. Docker caches each step as a layer, so when you edit code, the slow `pip install` layer is reused:
+
+```dockerfile
+# Install dependencies first, so code changes do not reinstall everything.
+COPY requirements.txt .
+RUN pip install -r requirements.txt
+```
+
+Do not run as root. If someone breaks into the app, a normal user can do far less damage. Then copy the code:
+
+```dockerfile
+# Run as a normal user, not root. DATA_DIR is the volume mount point.
+RUN useradd --create-home --uid 10001 app && mkdir /data && chown app /data
+COPY --chown=app . .
+USER app
+```
+
+Say which port it uses, how Docker can tell it is healthy, and how to start it. `--host 0.0.0.0` is needed so the app accepts connections from outside the container:
+
+```dockerfile
+ENV DATA_DIR=/data
+EXPOSE 8000
+
+HEALTHCHECK --interval=10s --timeout=3s --start-period=30s --retries=5 \
+    CMD python -c "import urllib.request as u; u.urlopen('http://localhost:8000/api/health', timeout=2)" || exit 1
+
+CMD ["uvicorn", "main:app", "--host", "0.0.0.0", "--port", "8000"]
+```
+
+Add `backend/.dockerignore` so junk does not get copied into the image:
+
+```text
+__pycache__/
+*.pyc
+data/
+.env
+```
+
+**3. The frontend Dockerfile.** Create `frontend/Dockerfile`. It has **three stages**. Only the last one becomes the final image, so build tools never ship.
+
+Stage 1 installs packages. `npm ci` installs exactly what `package-lock.json` says:
+
+```dockerfile
+# syntax=docker/dockerfile:1
+FROM node:22-alpine AS deps
+WORKDIR /app
+COPY package.json package-lock.json ./
+RUN npm ci
+```
+
+Stage 2 builds the app. Read the comment: a `NEXT_PUBLIC_*` value is **written into the JavaScript when you build**, so it must be the address your *browser* uses:
+
+```dockerfile
+FROM node:22-alpine AS build
+WORKDIR /app
+COPY --from=deps /app/node_modules ./node_modules
+COPY . .
+# NEXT_PUBLIC_* values are written into the JavaScript at build time. This is the address
+# the BROWSER uses to reach the API, so it is localhost, not the Docker service name.
+ARG NEXT_PUBLIC_API_URL=http://localhost:8000
+ENV NEXT_PUBLIC_API_URL=$NEXT_PUBLIC_API_URL \
+    NEXT_TELEMETRY_DISABLED=1
+RUN npm run build
+```
+
+Stage 3 is the small runtime image. It copies only the built server, runs as a normal user and has a health check:
+
+```dockerfile
+FROM node:22-alpine AS runner
+WORKDIR /app
+ENV NODE_ENV=production \
+    NEXT_TELEMETRY_DISABLED=1 \
+    PORT=3000 \
+    HOSTNAME=0.0.0.0
+RUN addgroup -S -g 10001 app && adduser -S -u 10001 -G app app
+# The standalone output holds the server and only the packages it needs.
+COPY --from=build --chown=app:app /app/.next/standalone ./
+COPY --from=build --chown=app:app /app/.next/static ./.next/static
+COPY --from=build --chown=app:app /app/public ./public
+USER app
+EXPOSE 3000
+
+HEALTHCHECK --interval=10s --timeout=3s --start-period=10s --retries=5 \
+    CMD wget -q -O /dev/null http://127.0.0.1:3000/ || exit 1
+
+CMD ["node", "server.js"]
+```
+
+This needs one setting in `frontend/next.config.ts`, which makes Next.js produce a small self-contained server in `.next/standalone`:
+
+```ts
+  output: "standalone",
+```
+
+(Add that line inside the `nextConfig` object.) Create `frontend/.dockerignore`:
+
+```text
+node_modules
+.next
+.env*
+npm-debug.log
+Dockerfile
+```
+
+**4. Keep the secret out of the files.** Create `.env.example` and copy it to `.env` (git ignores `.env`):
 
 ```bash
-cd course2/module1/app
-cp .env.example .env     # then put your OPENAI_API_KEY in .env
+cp .env.example .env   # then put your OpenAI key in .env
+```
+
+```text
+# Copy this file to .env and fill in your key:  cp .env.example .env
+OPENAI_API_KEY=sk-...
+```
+
+**5. The compose file.** Create `docker-compose.yml`. It has three services. `postgres` uses a ready-made image. The other two are built from your Dockerfiles.
+
+```yaml
+name: rag-lab   # a fixed project name, so volumes do not clash with the other apps in this repo
+
+services:
+  postgres:
+    image: pgvector/pgvector:pg17   # Postgres with the pgvector extension installed
+    environment:
+      POSTGRES_USER: lab
+      POSTGRES_PASSWORD: lab
+      POSTGRES_DB: lab
+    ports:
+      - "5432:5432"   # published so you can also run the API on your machine; remove for a locked-down setup
+    volumes:
+      - pgdata:/var/lib/postgresql/data   # keeps the index when the container restarts
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U lab"]
+      interval: 3s
+      retries: 20
+    restart: unless-stopped
+
+  backend:
+    build: ./backend
+    environment:
+      OPENAI_API_KEY: ${OPENAI_API_KEY:?Set OPENAI_API_KEY in app/.env (copy .env.example)}
+      DATABASE_URL: postgresql://lab:lab@postgres:5432/lab   # "postgres" is the service name on the Docker network
+      FRONTEND_ORIGINS: http://localhost:3000,http://127.0.0.1:3000
+    ports:
+      - "8000:8000"
+    volumes:
+      - lab-data:/data   # keeps the downloaded policy file between restarts
+    depends_on:
+      postgres:
+        condition: service_healthy
+    restart: unless-stopped
+
+  frontend:
+    build:
+      context: ./frontend
+      args:
+        NEXT_PUBLIC_API_URL: http://localhost:8000   # the address the browser uses
+    ports:
+      - "3000:3000"
+    depends_on:
+      backend:
+        condition: service_healthy
+    restart: unless-stopped
+
+volumes:
+  pgdata:
+  lab-data:
+```
+
+What the important lines do:
+
+| Line | Why |
+|---|---|
+| `name:` | A fixed project name, so this app's volumes never mix with another app's. |
+| `${OPENAI_API_KEY:?...}` | Reads the key from `.env`. If it is missing, compose stops with your message instead of failing later. |
+| `depends_on ... service_healthy` | Start order that waits for a *healthy* service, not just a started one. |
+| `volumes` | Data that must outlive the container. |
+| `restart: unless-stopped` | Restart after a crash or a reboot. |
+| `NEXT_PUBLIC_API_URL` under `args` | Passed to the frontend **build**, as explained above. |
+| `pgdata` volume | The database files live outside the container, so the index survives `docker compose down`. |
+| `lab-data` volume | Keeps the downloaded policy file. |
+| `DATABASE_URL` with host `postgres` | Inside Docker, the database is reached by its service name. |
+
+### Run it
+
+```bash
+cd course2/module1/my-lab
 docker compose up --build
 ```
 
-See the [app README](../app/README.md) for the details.
+In another terminal:
+
+```bash
+docker compose ps                 # every service should say healthy
+docker compose logs -f backend    # follow one service's log
+docker compose exec backend id -u # 10001: not root
+```
+
+Open http://localhost:3000. Run the live test against the container:
+
+```bash
+cd course2/module1/my-lab/backend
+uv run python test_live.py
+```
+
+**What you should see:** every service `healthy`, the page loads, and `ALL LIVE TESTS PASSED`. Stop with `docker compose down` (add `-v` to also delete the volumes).
+
+### Why it works
+
+The image holds the code and its exact dependencies, so it behaves the same on any machine. Compose gives the services a private network where they find each other by service name (the backend reaches the database at `postgres:5432`). The **browser**, though, is outside that network, which is why `NEXT_PUBLIC_API_URL` says `localhost:8000` and not a service name.
+
+### Common Docker mistakes
+
+| Mistake | What you see | Fix |
+|---|---|---|
+| Missing `.env` | `Set OPENAI_API_KEY in app/.env` | Copy `.env.example` to `.env` and add your key. |
+| Used a service name in `NEXT_PUBLIC_API_URL` | The page loads but every call fails in the browser console | Use the address the browser uses, `http://localhost:8000`, then rebuild. |
+| Changed `NEXT_PUBLIC_API_URL` without rebuilding | The old address is still used | `docker compose up --build`. |
+| Code change not showing | Old behaviour | Rebuild with `--build`. |
+| `address already in use` | A port is taken | Stop the other app (these apps share ports 3000, 8000 and 5432), or change the left side of the port mapping. |
+| `ModuleNotFoundError` in the container | Backend unhealthy | The package is missing from `requirements.txt`. Add it with a pinned version and rebuild. |
+| `npm ci` fails | Build stops in stage 1 | `package.json` and `package-lock.json` disagree. Run `npm install` locally and commit both. |
+| Backend `unhealthy` on first start | `docker compose ps` | Read `docker compose logs backend`. The health check only says something is wrong. |
 
 ---
 
@@ -1202,11 +1558,13 @@ No answers shown. Ask me for a hint.
 
 | Step | Problem | Added |
 |---|---|---|
-| 0 | Nowhere to keep vectors | Postgres with pgvector in Docker |
-| 1 | Pipeline in cells | `schema.sql`, `db.py`, `Lab` class |
-| 2 | Chunks invisible | `/api/index`, `/api/chunks`, Chunks tab |
-| 3 | Retrieval invisible | `Lab.search` (SQL, `<=>`), `/api/search`, Search tab |
-| 4 | Makes things up | `STRICT` vs `LOOSE` prompt in `qa.py`, `/api/ask` |
-| 5 | Forgets | history plus `REWRITE`, Ask tab |
+| 0 | Nothing runs yet | Hello world: one endpoint, one page |
+| 1 | Nowhere to keep vectors | Postgres with pgvector in Docker |
+| 2 | Pipeline in cells | `schema.sql`, `db.py`, `Lab` class |
+| 3 | Chunks invisible | `/api/index`, `/api/chunks`, Chunks tab |
+| 4 | Retrieval invisible | `Lab.search` (SQL, `<=>`), `/api/search`, Search tab |
+| 5 | Makes things up | `STRICT` vs `LOOSE` prompt in `qa.py`, `/api/ask` |
+| 6 | Forgets | history plus `REWRITE`, Ask tab |
+| 7 | Hard to run | Dockerfiles and compose, one command |
 
 Back to [Tutorial 1](01-rag-study-guide-and-lab-adapted.md) or [Tutorial 2](02-rag-build-a-notes-bot.md).

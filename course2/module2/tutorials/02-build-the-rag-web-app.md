@@ -10,6 +10,7 @@ New to the Gradio-to-web mapping? Read [Tutorial 1](01-gradio-concepts-adapted-t
 
 ```mermaid
 flowchart LR
+    S0["0 Hello world"] --> S1["1 RAG logic stuck in a notebook"]
     S1["1 RAG logic stuck in a notebook"] --> S2["2 Cannot ask over HTTP"]
     S2 --> S3["3 No chat page"]
     S3 --> S4["4 Cannot add my own files"]
@@ -17,6 +18,7 @@ flowchart LR
     S5 --> S6["6 Cannot see sources"]
     S6 --> S7["7 No way to tune it"]
     S7 --> S8["8 Errors look like nothing"]
+    S8 --> S9["9 One command: Docker"]
 ```
 
 ## Before you start
@@ -26,7 +28,21 @@ flowchart LR
 - Work in `course2/module2/my-app/` (build your own) and compare with `app/` when stuck.
 - Packages `fastapi`, `uvicorn` and `python-multipart` are in the root `pyproject.toml`. Frontend packages come from `npm install`.
 
-Real API calls cost a few cents in total. The checks at the end of this tutorial use fake models and cost nothing.
+Real API calls cost a few cents in total. Everything is real: the real OpenAI API, no fakes. Docker is only needed for the last step.
+
+---
+
+## Step 0: Hello world
+
+Every project here starts by proving that the page and the backend can talk. You did exactly this in [Tutorial 1, Concept 1](01-gradio-concepts-adapted-to-nextjs.md#concept-1-the-big-picture) and Concept 2 (an echo box). Check that you still have it:
+
+```bash
+cd course2/module2/my-app/backend
+uv run uvicorn main:app --reload --port 8000     # terminal 1
+cd ../frontend && npm run dev                    # terminal 2
+```
+
+**What you should see:** http://localhost:8000/api/health returns `{"status":"ok"}`, and the page at http://localhost:3000 can call the backend (the echo card works). If not, go back to Tutorial 1 first. Everything below adds one feature at a time to that working base.
 
 ---
 
@@ -726,16 +742,328 @@ The `postJson` helper already turns FastAPI's `detail` into the error message (T
 
 **What you should see:** stop the backend, ask a question, and you get `Error: Failed to fetch` in the chat instead of silence.
 
-### Test the backend without spending money
+### Test the real thing
 
-The finished project has `app/backend/test_api.py`. It replaces the OpenAI classes with fakes, so it is free and runs offline:
+No fakes. With the backend running, this test calls your real API and the real OpenAI API (a fraction of a cent). Create `backend/test_live.py`:
 
-```bash
-cd course2/module2/app/backend
-uv run python -c "import test_api; test_api.test_all(); print('ok')"
+```python
+# needs: your backend folder (file: test_live.py)
+"""Live test of the real stack. No fakes.
+
+Needs the API on port 8000 (uv run uvicorn main:app --port 8000, or docker compose up).
+It calls the real OpenAI API, so it costs a fraction of a cent.
+
+    uv run python test_live.py
+"""
+import os
+import uuid
+
+import httpx
+
+API = os.getenv("API_URL", "http://localhost:8000")
+client = httpx.Client(base_url=API, timeout=90)
+
+
+def test_rag() -> None:
+    # A made-up fact that no model could know. It can only come from the uploaded file.
+    code = f"PINEAPPLE-{uuid.uuid4().hex[:4].upper()}"
+    name = f"vault-{uuid.uuid4().hex[:4]}.txt"
+    text = f"Office handbook. The vault door code is {code}. Visitors must sign in at reception. " * 3
+    added = client.post("/api/documents", files=[("files", (name, text.encode()))]).json()
+    assert added["added"][name] >= 1 and name in added["sources"]
+
+    reply = client.post("/api/ask", json={"question": "What is the vault door code?", "k": 4}).json()
+    assert code in reply["answer"], reply["answer"]
+    assert any(s["source"] == name for s in reply["sources"])
+    assert {"source", "start_index", "text"} <= set(reply["sources"][0])
+
+    # Something the notes do not cover: the rule in the prompt should make the bot decline.
+    unknown = client.post("/api/ask", json={"question": "Who won the 2010 World Cup?", "k": 4}).json()
+    assert "know" in unknown["answer"].lower(), unknown["answer"]
+
+
+def test_memory_and_validation() -> None:
+    history = [
+        {"role": "user", "content": "What is cosine similarity?"},
+        {"role": "assistant", "content": "It measures how much two vectors point the same way."},
+    ]
+    r = client.post("/api/ask", json={"question": "And how is it different from the dot product?", "history": history, "k": 4})
+    assert r.status_code == 200 and r.json()["answer"]
+
+    assert client.post("/api/ask", json={"question": "x", "k": 50}).status_code == 422
+    assert client.post("/api/ask", json={"question": "x", "model": "gpt-9"}).status_code == 422
+    assert client.post("/api/ask", json={"question": ""}).status_code == 422
+
+
+if __name__ == "__main__":
+    for test in (test_rag, test_memory_and_validation):
+        test()
+        print("ok  ", test.__name__)
+    print("ALL LIVE TESTS PASSED")
 ```
 
-It checks every endpoint, validation and the `422` cases. It does **not** prove the answers are good, because the fake model always says `fake answer`.
+```bash
+cd course2/module2/my-app/backend
+uv run python test_live.py
+```
+
+**What you should see:** `ALL LIVE TESTS PASSED`. It uploads a file containing a made-up fact (a vault door code no model could know) and checks the bot answers with it, that an unrelated question gets "I don't know", that a follow-up works with history, and that bad `k`, model and empty questions get `422`. (The finished app's `test_live.py` also tests the echo, greet and file-count endpoints from Tutorial 1.) It does **not** prove the page looks right, and it checks facts, not exact wording, because LLM text varies.
+
+## Step 9: Run it with Docker
+
+### The problem
+
+To run the app you now need Python and its packages, Node and its packages, the right environment variables, and several terminals. A friend (or you in six months) will get at least one of those wrong.
+
+### The fix: one command
+
+**Docker** packages each part with everything it needs into an **image**, and **Docker Compose** starts all the parts together from one file. You will write three kinds of files:
+
+| File | Job |
+|---|---|
+| `backend/Dockerfile` | Recipe for the backend image |
+| `frontend/Dockerfile` | Recipe for the frontend image |
+| `docker-compose.yml` | Starts and connects the services |
+
+```mermaid
+flowchart LR
+    C["docker compose up"] --> B["backend image, port 8000"]
+    C --> F["frontend image, port 3000"]
+    F -.->|"browser calls"| B
+```
+
+### Type this
+
+**1. Pin the backend's packages.** In the Docker image there is no repo-wide environment, so list exactly what the backend needs. Create `backend/requirements.txt`. Pinned versions mean the image builds the same way next year:
+
+```text
+# Only what this app needs, pinned to the versions it was tested with.
+fastapi==0.143.3
+uvicorn[standard]==0.54.0
+python-multipart==0.0.32
+langchain-core==1.6.10
+langchain-openai==1.7.2
+langchain-text-splitters==1.1.3
+python-dotenv==1.2.4
+pydantic==2.14.1
+httpx==0.28.1
+numpy==2.5.4
+```
+
+**2. The backend Dockerfile.** Create `backend/Dockerfile`. Read it in four pieces. Type them one after another into the same file.
+
+Start from a small Python image and set sane defaults:
+
+```dockerfile
+# syntax=docker/dockerfile:1
+FROM python:3.14-slim AS base
+
+ENV PYTHONDONTWRITEBYTECODE=1 \
+    PYTHONUNBUFFERED=1 \
+    PIP_NO_CACHE_DIR=1 \
+    PIP_DISABLE_PIP_VERSION_CHECK=1
+
+WORKDIR /app
+```
+
+Install the dependencies **before** copying your code. Docker caches each step as a layer, so when you edit code, the slow `pip install` layer is reused:
+
+```dockerfile
+# Install dependencies first, so code changes do not reinstall everything.
+COPY requirements.txt .
+RUN pip install -r requirements.txt
+```
+
+Do not run as root. If someone breaks into the app, a normal user can do far less damage. Then copy the code:
+
+```dockerfile
+# Run as a normal user, not root.
+RUN useradd --create-home --uid 10001 app
+COPY --chown=app . .
+USER app
+```
+
+Say which port it uses, how Docker can tell it is healthy, and how to start it. `--host 0.0.0.0` is needed so the app accepts connections from outside the container:
+
+```dockerfile
+EXPOSE 8000
+
+HEALTHCHECK --interval=10s --timeout=3s --start-period=15s --retries=5 \
+    CMD python -c "import urllib.request as u; u.urlopen('http://localhost:8000/api/health', timeout=2)" || exit 1
+
+CMD ["uvicorn", "main:app", "--host", "0.0.0.0", "--port", "8000"]
+```
+
+Add `backend/.dockerignore` so junk does not get copied into the image:
+
+```text
+__pycache__/
+*.pyc
+.env
+test_live.py
+```
+
+**3. The frontend Dockerfile.** Create `frontend/Dockerfile`. It has **three stages**. Only the last one becomes the final image, so build tools never ship.
+
+Stage 1 installs packages. `npm ci` installs exactly what `package-lock.json` says:
+
+```dockerfile
+# syntax=docker/dockerfile:1
+FROM node:22-alpine AS deps
+WORKDIR /app
+COPY package.json package-lock.json ./
+RUN npm ci
+```
+
+Stage 2 builds the app. Read the comment: a `NEXT_PUBLIC_*` value is **written into the JavaScript when you build**, so it must be the address your *browser* uses:
+
+```dockerfile
+FROM node:22-alpine AS build
+WORKDIR /app
+COPY --from=deps /app/node_modules ./node_modules
+COPY . .
+# NEXT_PUBLIC_* values are written into the JavaScript at build time. This is the address
+# the BROWSER uses to reach the API, so it is localhost, not the Docker service name.
+ARG NEXT_PUBLIC_API_URL=http://localhost:8000
+ENV NEXT_PUBLIC_API_URL=$NEXT_PUBLIC_API_URL \
+    NEXT_TELEMETRY_DISABLED=1
+RUN npm run build
+```
+
+Stage 3 is the small runtime image. It copies only the built server, runs as a normal user and has a health check:
+
+```dockerfile
+FROM node:22-alpine AS runner
+WORKDIR /app
+ENV NODE_ENV=production \
+    NEXT_TELEMETRY_DISABLED=1 \
+    PORT=3000 \
+    HOSTNAME=0.0.0.0
+RUN addgroup -S -g 10001 app && adduser -S -u 10001 -G app app
+# The standalone output holds the server and only the packages it needs.
+COPY --from=build --chown=app:app /app/.next/standalone ./
+COPY --from=build --chown=app:app /app/.next/static ./.next/static
+COPY --from=build --chown=app:app /app/public ./public
+USER app
+EXPOSE 3000
+
+HEALTHCHECK --interval=10s --timeout=3s --start-period=10s --retries=5 \
+    CMD wget -q -O /dev/null http://127.0.0.1:3000/ || exit 1
+
+CMD ["node", "server.js"]
+```
+
+This needs one setting in `frontend/next.config.ts`, which makes Next.js produce a small self-contained server in `.next/standalone`:
+
+```ts
+  output: "standalone",
+```
+
+(Add that line inside the `nextConfig` object.) Create `frontend/.dockerignore`:
+
+```text
+node_modules
+.next
+.env*
+npm-debug.log
+Dockerfile
+```
+
+**4. Keep the secret out of the files.** Create `.env.example` and copy it to `.env` (git ignores `.env`):
+
+```bash
+cp .env.example .env   # then put your OpenAI key in .env
+```
+
+```text
+# Copy this file to .env and fill in your key:  cp .env.example .env
+OPENAI_API_KEY=sk-...
+```
+
+**5. The compose file.** Create `docker-compose.yml`. It has two services. Note the **bind mount** that gives the backend your notes file.
+
+```yaml
+name: notes-bot   # a fixed project name, so volumes do not clash with the other apps in this repo
+
+services:
+  backend:
+    build: ./backend
+    environment:
+      OPENAI_API_KEY: ${OPENAI_API_KEY:?Set OPENAI_API_KEY in app/.env (copy .env.example)}
+      FRONTEND_ORIGINS: http://localhost:3000,http://127.0.0.1:3000
+      SEED_FILE: /seed/transcript.md   # the notes the bot reads on first use
+    volumes:
+      - ../../module1/transcript.md:/seed/transcript.md:ro   # your module 1 notes, mounted read-only
+    ports:
+      - "8000:8000"
+    restart: unless-stopped
+
+  frontend:
+    build:
+      context: ./frontend
+      args:
+        NEXT_PUBLIC_API_URL: http://localhost:8000   # the address the browser uses
+    ports:
+      - "3000:3000"
+    depends_on:
+      backend:
+        condition: service_healthy
+    restart: unless-stopped
+```
+
+What the important lines do:
+
+| Line | Why |
+|---|---|
+| `name:` | A fixed project name, so this app's volumes never mix with another app's. |
+| `${OPENAI_API_KEY:?...}` | Reads the key from `.env`. If it is missing, compose stops with your message instead of failing later. |
+| `depends_on ... service_healthy` | Start order that waits for a *healthy* service, not just a started one. |
+| `volumes` | Data that must outlive the container. |
+| `restart: unless-stopped` | Restart after a crash or a reboot. |
+| `NEXT_PUBLIC_API_URL` under `args` | Passed to the frontend **build**, as explained above. |
+| `SEED_FILE` and the `:ro` bind mount | Your module 1 notes are mounted into the container read-only, so the bot has something to read on first use. |
+| No database volume | This app keeps its index in memory, so uploads vanish when the backend restarts. See the [OWASP chat](../../fullstack-chat/README.md) for the Postgres version. |
+
+### Run it
+
+```bash
+cd course2/module2/my-app
+docker compose up --build
+```
+
+In another terminal:
+
+```bash
+docker compose ps                 # every service should say healthy
+docker compose logs -f backend    # follow one service's log
+docker compose exec backend id -u # 10001: not root
+```
+
+Open http://localhost:3000. Run the live test against the container:
+
+```bash
+cd course2/module2/my-app/backend
+uv run python test_live.py
+```
+
+**What you should see:** every service `healthy`, the page loads, and `ALL LIVE TESTS PASSED`. Stop with `docker compose down` (add `-v` to also delete the volumes).
+
+### Why it works
+
+The image holds the code and its exact dependencies, so it behaves the same on any machine. Compose gives the services a private network where they find each other by service name. The **browser**, though, is outside that network, which is why `NEXT_PUBLIC_API_URL` says `localhost:8000` and not a service name.
+
+### Common Docker mistakes
+
+| Mistake | What you see | Fix |
+|---|---|---|
+| Missing `.env` | `Set OPENAI_API_KEY in app/.env` | Copy `.env.example` to `.env` and add your key. |
+| Used a service name in `NEXT_PUBLIC_API_URL` | The page loads but every call fails in the browser console | Use the address the browser uses, `http://localhost:8000`, then rebuild. |
+| Changed `NEXT_PUBLIC_API_URL` without rebuilding | The old address is still used | `docker compose up --build`. |
+| Code change not showing | Old behaviour | Rebuild with `--build`. |
+| `address already in use` | A port is taken | Stop the other app (these apps share ports 3000, 8000 and 5432), or change the left side of the port mapping. |
+| `ModuleNotFoundError` in the container | Backend unhealthy | The package is missing from `requirements.txt`. Add it with a pinned version and rebuild. |
+| `npm ci` fails | Build stops in stage 1 | `package.json` and `package-lock.json` disagree. Run `npm install` locally and commit both. |
+| Backend `unhealthy` on first start | `docker compose ps` | Read `docker compose logs backend`. The health check only says something is wrong. |
 
 ---
 
@@ -806,6 +1134,7 @@ No answers shown. Ask me for a hint.
 
 | Step | Problem | What was added |
 |---|---|---|
+| 0 | Nothing connected yet | Hello world check from Tutorial 1 |
 | 1 | Logic stuck in a notebook | `RagEngine` class |
 | 2 | No web address | `POST /api/ask` with validation |
 | 3 | No page | `ChatPanel` |
@@ -814,5 +1143,6 @@ No answers shown. Ask me for a hint.
 | 6 | Cannot verify | sources with file name and position |
 | 7 | Cannot tune | settings controls tied to validated fields |
 | 8 | Silent errors | `catch` and a friendly message |
+| 9 | Hard to run | Dockerfiles and compose, one command |
 
 Back to [Tutorial 1](01-gradio-concepts-adapted-to-nextjs.md).

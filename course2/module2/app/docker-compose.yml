@@ -1,0 +1,26 @@
+name: notes-bot   # a fixed project name, so volumes do not clash with the other apps in this repo
+
+services:
+  backend:
+    build: ./backend
+    environment:
+      OPENAI_API_KEY: ${OPENAI_API_KEY:?Set OPENAI_API_KEY in app/.env (copy .env.example)}
+      FRONTEND_ORIGINS: http://localhost:3000,http://127.0.0.1:3000
+      SEED_FILE: /seed/transcript.md   # the notes the bot reads on first use
+    volumes:
+      - ../../module1/transcript.md:/seed/transcript.md:ro   # your module 1 notes, mounted read-only
+    ports:
+      - "8000:8000"
+    restart: unless-stopped
+
+  frontend:
+    build:
+      context: ./frontend
+      args:
+        NEXT_PUBLIC_API_URL: http://localhost:8000   # the address the browser uses
+    ports:
+      - "3000:3000"
+    depends_on:
+      backend:
+        condition: service_healthy
+    restart: unless-stopped

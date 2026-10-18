@@ -915,4 +915,4 @@ No answers shown. Ask me for a hint.
 | 7 | `ratelimit.py` | `INCR` plus `EXPIRE`, checked first |
 | 8 | `test_live.py` | Test the real stack, assert facts |
 
-Back to [part 1](01-hello-world-to-streaming-chat.md) or the [guide](../README.md).
+Next: [Part 5: Run everything with Docker](05-docker-compose.md).

@@ -15,7 +15,7 @@ A follow-along guide that starts from a **hello world** and ends with a ChatGPT-
 
 > **Content and license.** The OWASP Top 10 text is published by the OWASP Foundation under [CC BY-SA 4.0](https://creativecommons.org/licenses/by-sa/4.0/) ([source](https://github.com/OWASP/Top10)). The app downloads it at load time and links back to owasp.org.
 
-**How to use this guide:** do the four tutorials in order. Each ends with a working app. A finished copy is in [app/](app/).
+**How to use this guide:** do the five tutorials in order. Each ends with a working app. A finished copy is in [app/](app/).
 
 ## Contents
 
@@ -37,6 +37,7 @@ A follow-along guide that starts from a **hello world** and ends with a ChatGPT-
 | [2: Saved conversations with Postgres](tutorials/02-postgres-conversations.md) | Part 1 | A sidebar of saved chats, history sent to the model |
 | [3: pgvector and an OWASP knowledge base](tutorials/03-pgvector-owasp-knowledge-base.md) | Part 2 | RAG: sourced answers from the OWASP pages |
 | [4: Redis and Celery](tutorials/04-redis-and-celery.md) | Part 3 | Background loading with a status panel, a rate limit, a live test |
+| [5: Run everything with Docker](tutorials/05-docker-compose.md) | Part 4 | Dockerfiles and a compose file: one command starts all five services |
 
 Related: the course apps [module 1](../module1/app/) and [module 2](../module2/app/) use the same Next.js and FastAPI pairing for the RAG labs.
 
@@ -134,6 +135,7 @@ Each piece is added only when a problem demands it.
 | Cleaning and chunking Markdown; putting the title in front for embedding | Part 3 |
 | RAG: rewrite, retrieve, answer, cite; similarity as a "do I know this" signal | Part 3 |
 | Task queue, broker, worker, `.delay()`, upserts, polling | Part 4 |
+| Images, layer caching, non-root users, health checks, `depends_on`, volumes, build-time vs run-time settings | Part 5 |
 | Rate limiting with `INCR` and `EXPIRE` | Part 4 |
 | Testing the real stack | Part 4 |
 
@@ -141,12 +143,24 @@ Each piece is added only when a problem demands it.
 
 ## 5. Run the finished app
 
-You need Docker, Node.js 20+, and `OPENAI_API_KEY` in the repo-root `.env`. Packages are in the root `pyproject.toml`. Use four terminals:
+You need Docker, and `OPENAI_API_KEY` in `app/.env`.
+
+**One command (recommended):**
+
+```bash
+cd course2/fullstack-chat/app
+cp .env.example .env        # then put your key in .env as OPENAI_API_KEY=sk-...
+docker compose up --build
+```
+
+(Key already in the repo-root `.env`? Use `docker compose --env-file ../../../.env up --build`.) Open http://localhost:3000, press **Load OWASP Top 10**, wait for ten `ready` badges, and ask a question. API docs: http://localhost:8000/docs. `docker compose down` stops everything (add `-v` to also delete the data).
+
+**For development** (edit code with auto-reload): run only the databases in Docker, and the rest on your machine, in four terminals:
 
 ```bash
 # 1. Postgres (with pgvector) and Redis
 cd course2/fullstack-chat/app
-docker compose up -d
+docker compose up -d postgres redis
 
 # 2. API (creates the tables on start)
 cd course2/fullstack-chat/app/backend
@@ -161,9 +175,7 @@ npm install
 npm run dev
 ```
 
-Open http://localhost:3000, press **Load OWASP Top 10**, wait for ten `ready` badges, and ask a question. API docs: http://localhost:8000/docs.
-
-**Test the real stack** (needs steps 1 to 3 running; costs a fraction of a cent):
+**Test the real stack** (needs the stack running either way; costs a fraction of a cent):
 
 ```bash
 cd course2/fullstack-chat/app/backend && uv run python test_live.py
@@ -171,7 +183,7 @@ cd course2/fullstack-chat/app/backend && uv run python test_live.py
 
 Frontend checks: `cd app/frontend && npx tsc --noEmit && npm run lint && npm run build`.
 
-Stop everything with `docker compose down` (add `-v` to also delete the data).
+Ports 3000, 8000, 5432 and 6379 are used. The other course apps use some of the same ports, so run one at a time.
 
 Packages added to the root `pyproject.toml` for this guide: `celery`, `redis`, `psycopg[binary]`, `psycopg-pool`, `pgvector`, `httpx`.
 
@@ -202,7 +214,8 @@ Packages added to the root `pyproject.toml` for this guide: `celery`, `redis`, `
 
 | Command | Does |
 |---|---|
-| `docker compose up -d` | Start Postgres and Redis |
+| `docker compose up --build` | Start everything (Postgres, Redis, API, worker, page) |
+| `docker compose up -d postgres redis` | Start only the databases, for development |
 | `uv run uvicorn main:app --reload --port 8000` | Start the API |
 | `uv run celery -A tasks worker --loglevel=info --pool=solo` | Start the worker |
 | `npm run dev` | Start the page |

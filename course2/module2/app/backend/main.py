@@ -1,4 +1,5 @@
 """FastAPI app. Each endpoint is the web version of a Gradio function."""
+import os
 from typing import Annotated, Literal
 
 from fastapi import FastAPI, File, Form, HTTPException, UploadFile
@@ -12,7 +13,7 @@ app = FastAPI(title="RAG Notes Bot")
 # The browser app runs on port 3000, so the API must allow that origin.
 app.add_middleware(
     CORSMiddleware,
-    allow_origins=["http://localhost:3000", "http://127.0.0.1:3000"],
+    allow_origins=os.getenv("FRONTEND_ORIGINS", "http://localhost:3000,http://127.0.0.1:3000").split(","),
     allow_methods=["*"],
     allow_headers=["*"],
 )
