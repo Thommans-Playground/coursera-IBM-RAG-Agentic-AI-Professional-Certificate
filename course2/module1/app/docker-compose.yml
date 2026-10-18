@@ -1,0 +1,49 @@
+name: rag-lab   # a fixed project name, so volumes do not clash with the other apps in this repo
+
+services:
+  postgres:
+    image: pgvector/pgvector:pg17   # Postgres with the pgvector extension installed
+    environment:
+      POSTGRES_USER: lab
+      POSTGRES_PASSWORD: lab
+      POSTGRES_DB: lab
+    ports:
+      - "5432:5432"   # published so you can also run the API on your machine; remove for a locked-down setup
+    volumes:
+      - pgdata:/var/lib/postgresql/data   # keeps the index when the container restarts
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U lab"]
+      interval: 3s
+      retries: 20
+    restart: unless-stopped
+
+  backend:
+    build: ./backend
+    environment:
+      OPENAI_API_KEY: ${OPENAI_API_KEY:?Set OPENAI_API_KEY in app/.env (copy .env.example)}
+      DATABASE_URL: postgresql://lab:lab@postgres:5432/lab   # "postgres" is the service name on the Docker network
+      FRONTEND_ORIGINS: http://localhost:3000,http://127.0.0.1:3000
+    ports:
+      - "8000:8000"
+    volumes:
+      - lab-data:/data   # keeps the downloaded policy file between restarts
+    depends_on:
+      postgres:
+        condition: service_healthy
+    restart: unless-stopped
+
+  frontend:
+    build:
+      context: ./frontend
+      args:
+        NEXT_PUBLIC_API_URL: http://localhost:8000   # the address the browser uses
+    ports:
+      - "3000:3000"
+    depends_on:
+      backend:
+        condition: service_healthy
+    restart: unless-stopped
+
+volumes:
+  pgdata:
+  lab-data:

@@ -1,3 +1,5 @@
+name: owasp-chat   # a fixed project name, so volumes do not clash with the other apps in this repo
+
 services:
   postgres:
     image: pgvector/pgvector:pg17   # Postgres with the pgvector extension installed

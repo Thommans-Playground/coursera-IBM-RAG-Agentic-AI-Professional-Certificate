@@ -1,4 +1,4 @@
-# Tutorial 3: Build the RAG Lab as a Web App (Next.js + FastAPI)
+# Tutorial 3: Build the RAG Lab as a Web App (Next.js + FastAPI + Postgres)
 
 **What you build.** The Module 1 lab as a small web app, so you can *see* each stage of RAG instead of reading cell output. It has three tabs:
 
@@ -6,17 +6,20 @@
 2. **Search**: type a question and see exactly which chunks the retriever returns, with scores. No LLM involved.
 3. **Ask**: chat with the Innovatech company policies. Switch the "I don't know" rule and memory on and off.
 
-**How this tutorial works.** One app, grown in small steps. Each step starts with a **problem**, then the **fix**. It uses the lab's own file, `companyPolicies.txt`. The LLM is OpenAI (`gpt-4o-mini`) instead of watsonx, as in [Tutorial 1](01-rag-study-guide-and-lab-adapted.md).
+**The vector store is Postgres.** The lab used an in-memory store that forgets everything when the program stops. Here the chunks and their embeddings live in **PostgreSQL with the pgvector extension**, so the index survives restarts and the search is one SQL query. Redis is not used: nothing in this app needs a queue or counters. (The [full-stack OWASP chat](../../fullstack-chat/README.md) adds Redis and Celery when it does.)
+
+**How this tutorial works.** One app, grown in small steps. Each step starts with a **problem**, then the **fix**. It uses the lab's own file, `companyPolicies.txt`. Everything is real: real Postgres in Docker, the real OpenAI API. The LLM is OpenAI (`gpt-4o-mini`) instead of watsonx, as in [Tutorial 1](01-rag-study-guide-and-lab-adapted.md).
 
 New to FastAPI, `fetch`, CORS or shadcn inputs? Read [module 2, Tutorial 1](../../module2/tutorials/01-gradio-concepts-adapted-to-nextjs.md) first. This tutorial reuses those ideas without re-explaining them. The module 2 [RAG web app](../../module2/tutorials/02-build-the-rag-web-app.md) answers from your own uploaded notes. This one is for **learning how RAG behaves**.
 
-A finished copy is in [../app/](../app/). Build yours in `course2/module1/my-lab/` and compare.
+A finished copy is in [../app/](../app/), and you can run it with one command: see its [README](../app/README.md). Build yours in `course2/module1/my-lab/` and compare.
 
 ## The path
 
 ```mermaid
 flowchart LR
-    S1["1 Pipeline stuck in notebook cells"] --> S2["2 Cannot see the chunks"]
+    S0["0 Start Postgres"] --> S1["1 Pipeline in cells, now a Lab class"]
+    S1 --> S2["2 Cannot see the chunks"]
     S2 --> S3["3 Cannot see what retrieval returns"]
     S3 --> S4["4 Bot makes things up"]
     S4 --> S5["5 Bot forgets"]
@@ -24,8 +27,8 @@ flowchart LR
 
 ## Before you start
 
-- `OPENAI_API_KEY` in the repo-root `.env`.
-- Backend packages (`fastapi`, `uvicorn`, `python-multipart`) are in the root `pyproject.toml`.
+- `OPENAI_API_KEY` in the repo-root `.env`, and Docker running.
+- Backend packages (`fastapi`, `uvicorn`, `psycopg`, `pgvector`, `langchain-openai` and friends) are in the root `pyproject.toml`.
 - Frontend project, from `course2/module1/my-lab/`:
 
 ```bash
@@ -35,7 +38,58 @@ npx shadcn@latest init -d -y
 npx shadcn@latest add button card input label slider radio-group checkbox textarea badge tabs -y
 ```
 
-Real API calls cost a few cents. The checks at the end are free.
+Real API calls cost a few cents. Embedding the policy file takes a fraction of a cent.
+
+---
+
+## Step 0: Start Postgres
+
+### The idea
+
+**PostgreSQL** is a database that stores data in tables. **pgvector** is an extension that adds a `vector(1536)` column type and operators to compare vectors. We use the image `pgvector/pgvector`, which is Postgres with the extension already installed.
+
+```mermaid
+flowchart LR
+    A["FastAPI"] --> D[("Postgres + pgvector: lab_chunks")]
+    A --> O["OpenAI embeddings and chat"]
+```
+
+### Type this
+
+In `my-lab/` create `docker-compose.yml`:
+
+```yaml
+name: rag-lab   # a fixed project name, so volumes do not clash with the other apps in this repo
+
+services:
+  postgres:
+    image: pgvector/pgvector:pg17   # Postgres with the pgvector extension installed
+    environment:
+      POSTGRES_USER: lab
+      POSTGRES_PASSWORD: lab
+      POSTGRES_DB: lab
+    ports:
+      - "5432:5432"
+    volumes:
+      - pgdata:/var/lib/postgresql/data   # keeps the index when the container restarts
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U lab"]
+      interval: 3s
+      retries: 20
+
+volumes:
+  pgdata:
+```
+
+```bash
+cd course2/module1/my-lab
+docker compose up -d
+docker compose exec postgres psql -U lab lab -c "select version();"
+```
+
+**What you should see:** a line starting with `PostgreSQL 17`.
+
+> The password `lab` is for your laptop only. Port 5432 clashes with any other Postgres you run, including the OWASP chat app's. Stop the other one first.
 
 ---
 
@@ -43,96 +97,184 @@ Real API calls cost a few cents. The checks at the end are free.
 
 ### The problem
 
-In the lab the pipeline is a row of cells: download, load, split, embed, store. A web server cannot run cells. We need one object that can **build the index** (with chosen settings) and **answer questions**.
+In the lab the pipeline is a row of cells: download, load, split, embed, store. A web server cannot run cells. We need one object that can **build the index** (with chosen settings) and **answer questions**, and a **place to keep the vectors**.
 
-### The fix: a `Lab` class
+### The fix: a `Lab` class on top of two tables
 
 ```mermaid
 flowchart LR
     W["main.py: web layer"] --> L["Lab: lab.py"]
     L --> D["Download file"]
-    L --> I["build: split, embed, store"]
-    L --> Q["search and ask"]
+    L --> I["build: split, embed, store in Postgres"]
+    L --> Q["search: SQL"]
 ```
 
 ### Type this
 
-Create `backend/lab.py`. Imports first:
+Create `backend/schema.sql`. Every statement says `IF NOT EXISTS`, so it is safe to run on every start:
+
+```sql
+CREATE EXTENSION IF NOT EXISTS vector;
+
+-- The settings the current index was built with. At most one row.
+CREATE TABLE IF NOT EXISTS lab_settings (
+    id             int PRIMARY KEY DEFAULT 1 CHECK (id = 1),
+    splitter       text NOT NULL,
+    chunk_size     int NOT NULL,
+    chunk_overlap  int NOT NULL
+);
+
+-- One row per chunk. 1536 is the size of text-embedding-3-small vectors.
+CREATE TABLE IF NOT EXISTS lab_chunks (
+    id         int PRIMARY KEY,
+    content    text NOT NULL,
+    embedding  vector(1536) NOT NULL
+);
+CREATE INDEX IF NOT EXISTS lab_chunks_embedding_idx ON lab_chunks USING hnsw (embedding vector_cosine_ops);
+```
+
+`CHECK (id = 1)` allows only one settings row. The **HNSW index** makes nearest-neighbour search fast on many rows.
+
+Create `backend/db.py`. A **connection pool** keeps a few connections open for requests to borrow:
 
 ```python
+# needs: your backend folder (file: db.py)
+"""Postgres connections. The lab's endpoints are plain `def`, so a normal (sync) pool is enough."""
+import os
+from pathlib import Path
+
+import psycopg
+from dotenv import load_dotenv
+from pgvector.psycopg import register_vector
+from psycopg.rows import dict_row
+from psycopg_pool import ConnectionPool
+
+load_dotenv()
+
+DATABASE_URL = os.getenv("DATABASE_URL", "postgresql://lab:lab@localhost:5432/lab")
+SCHEMA = Path(__file__).with_name("schema.sql")
+
+
+def init_schema() -> None:
+    # Safe to run on every start: every statement says IF NOT EXISTS.
+    with psycopg.connect(DATABASE_URL, autocommit=True) as conn:
+        conn.execute(SCHEMA.read_text())
+
+
+def make_pool() -> ConnectionPool:
+    return ConnectionPool(
+        DATABASE_URL,
+        min_size=1,
+        max_size=5,
+        open=False,
+        configure=register_vector,  # lets us pass numpy arrays as vectors
+        kwargs={"row_factory": dict_row, "autocommit": True},
+    )
+```
+
+`dict_row` returns each row as a dictionary (`row["id"]`). `register_vector` teaches the driver the `vector` type.
+
+Create `backend/lab.py`. First the imports and the file download (this replaces the lab's `wget`):
+
+```python
+# needs: your backend folder (file: lab.py)
+"""The lab's RAG pipeline as an object: load, split, embed, store, retrieve."""
+import os
 from pathlib import Path
 from urllib.request import urlretrieve
 
+import numpy as np
 from dotenv import load_dotenv
 from langchain_core.documents import Document
-from langchain_core.messages import AIMessage, HumanMessage
-from langchain_core.output_parsers import StrOutputParser
-from langchain_core.prompts import ChatPromptTemplate, MessagesPlaceholder
-from langchain_core.vectorstores import InMemoryVectorStore
-from langchain_openai import ChatOpenAI, OpenAIEmbeddings
+from langchain_openai import OpenAIEmbeddings
 from langchain_text_splitters import CharacterTextSplitter, RecursiveCharacterTextSplitter
+from psycopg_pool import ConnectionPool
 
 load_dotenv()
-```
 
-The file and its download. This replaces the lab's `wget`:
-
-```python
 POLICY_URL = "https://cf-courses-data.s3.us.cloud-object-storage.appdomain.cloud/6JDbUb_L3egv_eOkouY71A.txt"
-POLICY_FILE = Path("data") / "companyPolicies.txt"
+# DATA_DIR lets a container keep the downloaded file on a volume.
+POLICY_FILE = Path(os.getenv("DATA_DIR", Path(__file__).resolve().parent / "data")) / "companyPolicies.txt"
 
 
 def load_policies() -> str:
     # Downloaded once, like the lab's wget step.
     if not POLICY_FILE.exists():
-        POLICY_FILE.parent.mkdir(exist_ok=True)
+        POLICY_FILE.parent.mkdir(parents=True, exist_ok=True)
         urlretrieve(POLICY_URL, POLICY_FILE)
     return POLICY_FILE.read_text()
 ```
 
-(In the finished app the path is anchored to the file's own folder, so it works from any directory. Use `Path(__file__).resolve().parent / "data" / ...` in your file.)
-
-The class, with only the **indexing** side:
+Then the class below it, with the **indexing** side and a way to read the index back:
 
 ```python
+# needs: your backend folder (file: lab.py, append)
 class Lab:
-    def __init__(self) -> None:
+    def __init__(self, pool: ConnectionPool) -> None:
+        self.pool = pool
         self.embeddings = OpenAIEmbeddings(model="text-embedding-3-small")
         self.text = load_policies()
-        self.chunks: list[Document] = []
-        self.store = InMemoryVectorStore(self.embeddings)
-        self.settings: dict = {}
+
+    def is_built(self) -> bool:
+        with self.pool.connection() as conn:
+            return conn.execute("SELECT 1 FROM lab_chunks LIMIT 1").fetchone() is not None
 
     def build(self, splitter: str, chunk_size: int, chunk_overlap: int) -> None:
         cls = CharacterTextSplitter if splitter == "character" else RecursiveCharacterTextSplitter
-        docs = cls(chunk_size=chunk_size, chunk_overlap=chunk_overlap).split_documents(
+        chunks = cls(chunk_size=chunk_size, chunk_overlap=chunk_overlap).split_documents(
             [Document(page_content=self.text, metadata={"source": POLICY_FILE.name})]
         )
-        for i, d in enumerate(docs):
-            d.metadata["chunk_id"] = i
-        self.chunks = docs
-        self.store = InMemoryVectorStore(self.embeddings)  # fresh store, so old chunks do not linger
-        self.store.add_documents(docs)
-        self.settings = {"splitter": splitter, "chunk_size": chunk_size, "chunk_overlap": chunk_overlap}
+        texts = [c.page_content for c in chunks]
+        vectors = self.embeddings.embed_documents(texts)
+        with self.pool.connection() as conn, conn.transaction():  # all or nothing, so a failure keeps the old index
+            conn.execute("DELETE FROM lab_chunks")  # replace the whole index, so old chunks do not linger
+            for i, (text, vec) in enumerate(zip(texts, vectors)):
+                conn.execute("INSERT INTO lab_chunks (id, content, embedding) VALUES (%s, %s, %s)", (i, text, np.array(vec)))
+            conn.execute(
+                "INSERT INTO lab_settings (id, splitter, chunk_size, chunk_overlap) VALUES (1, %s, %s, %s) "
+                "ON CONFLICT (id) DO UPDATE SET splitter = excluded.splitter, "
+                "chunk_size = excluded.chunk_size, chunk_overlap = excluded.chunk_overlap",
+                (splitter, chunk_size, chunk_overlap),
+            )
+
+    def state(self) -> dict:
+        with self.pool.connection() as conn:
+            settings = conn.execute("SELECT splitter, chunk_size, chunk_overlap FROM lab_settings").fetchone()
+            rows = conn.execute("SELECT id, length(content) AS length, content AS text FROM lab_chunks ORDER BY id").fetchall()
+        return {"settings": settings, "chunks": rows}
 ```
 
-Try it:
+Try it (this calls the real embedding API once):
 
 ```python
-lab = Lab()
+# needs: your backend folder (run it from there, with Postgres running)
+import db
+from lab import Lab
+
+db.init_schema()
+pool = db.make_pool()
+pool.open()
+lab = Lab(pool)
 lab.build("character", 1000, 0)
-print(len(lab.chunks))
+print(len(lab.state()["chunks"]))
+pool.close()
 ```
 
-**What you should see:** `16`, the lab's number. (You may also see "Created a chunk of size ..." warnings.)
+**What you should see:** `16`, the lab's number. Check the database itself:
+
+```bash
+docker compose exec postgres psql -U lab lab -c "select id, length(content), vector_dims(embedding) from lab_chunks order by id limit 4;"
+```
+
+You see the chunk lengths and `1536` dimensions.
 
 ### Why it works
 
-`build` is the indexing phase: load, split, embed, store. Each chunk gets a `chunk_id` so we can point at it later. A **fresh store** on every build matters. Without it, old chunks from earlier settings would stay in the index.
+`build` is the lab's indexing phase: split, embed, store. It runs inside a **transaction** (`conn.transaction()`): the old index is deleted and the new one inserted as one unit. If the embedding call had failed halfway, the old index would still be there. Because the data is in Postgres, **restarting the server does not lose the index**.
 
 ### Try it
 
-Run `lab.build("recursive", 500, 50)` and print `len(lab.chunks)`. Why is the number larger?
+Run the snippet again. Does the count stay `16`? (It deletes the old rows first.) Then stop and start the container: `docker compose restart postgres`. Is the data still there?
 
 ---
 
@@ -149,79 +291,99 @@ sequenceDiagram
     participant P as Chunks tab
     participant A as FastAPI
     participant L as Lab
+    participant D as Postgres
     P->>A: POST /api/index with splitter, size, overlap
     A->>L: build(...)
-    L-->>A: chunks
+    L->>D: replace the chunks and vectors
+    A->>L: state()
+    L->>D: read settings and chunks
     A-->>P: id, length, text for each chunk
 ```
 
 ### Type this
 
-Create `backend/main.py`:
+Create `backend/main.py`. A **lifespan** function runs at server start and stop: it creates the tables, opens the pool, builds the first index (only if the database is empty) and closes the pool at the end:
 
 ```python
+# needs: your backend folder (file: main.py)
+"""FastAPI app for the RAG lab. One endpoint per pipeline stage."""
+import os
+from contextlib import asynccontextmanager
 from typing import Literal
 
-from fastapi import FastAPI, HTTPException
+from fastapi import FastAPI, HTTPException, Request
 from fastapi.middleware.cors import CORSMiddleware
 from pydantic import BaseModel, Field
 
-app = FastAPI(title="RAG Lab")
+import db
+from lab import Lab
+
+
+@asynccontextmanager
+async def lifespan(app: FastAPI):
+    db.init_schema()
+    pool = db.make_pool()
+    pool.open()
+    app.state.pool = pool
+    app.state.lab = Lab(pool)
+    if not app.state.lab.is_built():  # first run only: the index then survives restarts in Postgres
+        app.state.lab.build("character", 1000, 0)  # the lab's own settings
+    yield
+    pool.close()
+
+
+app = FastAPI(title="RAG Lab", lifespan=lifespan)
 app.add_middleware(
     CORSMiddleware,
-    allow_origins=["http://localhost:3000", "http://127.0.0.1:3000"],
+    allow_origins=os.getenv("FRONTEND_ORIGINS", "http://localhost:3000,http://127.0.0.1:3000").split(","),
     allow_methods=["*"],
     allow_headers=["*"],
 )
 ```
 
-At the top add `from lab import Lab`. Then a single shared lab, created on first use with the lab's own settings:
+The request shape and the endpoints:
 
 ```python
-the_lab = Lab()
-the_lab.build("character", 1000, 0)
-
-
-def chunk_summary(docs):
-    return [{"id": d.metadata["chunk_id"], "length": len(d.page_content), "text": d.page_content} for d in docs]
-```
-
-> The finished app builds the lab lazily on the first request so the server starts instantly. Here we build at import to keep the code short.
-
-The request shape and two endpoints:
-
-```python
+# needs: your backend folder (file: main.py, append)
 class IndexIn(BaseModel):
     splitter: Literal["character", "recursive"] = "character"
     chunk_size: int = Field(default=1000, ge=100, le=3000)
     chunk_overlap: int = Field(default=0, ge=0, le=500)
 
 
+@app.get("/api/health")
+def health():
+    return {"status": "ok"}
+
+
 @app.get("/api/chunks")
-def chunks():
-    return {"settings": the_lab.settings, "chunks": chunk_summary(the_lab.chunks)}
+def chunks(request: Request):
+    return request.app.state.lab.state()
 
 
 @app.post("/api/index")
-def index(body: IndexIn):
+def index(body: IndexIn, request: Request):
     if body.chunk_overlap >= body.chunk_size:
         raise HTTPException(status_code=422, detail="chunk_overlap must be smaller than chunk_size")
-    the_lab.build(body.splitter, body.chunk_size, body.chunk_overlap)
-    return {"settings": the_lab.settings, "chunks": chunk_summary(the_lab.chunks)}
+    lab = request.app.state.lab
+    lab.build(body.splitter, body.chunk_size, body.chunk_overlap)
+    return lab.state()
 ```
 
-Test:
+Run it (Postgres up, from `backend/`):
 
-```python
-from fastapi.testclient import TestClient
-
-client = TestClient(app)
-lengths = [c["length"] for c in client.get("/api/chunks").json()["chunks"]]
-print(lengths[:6])
-print(client.post("/api/index", json={"chunk_size": 200, "chunk_overlap": 200}).status_code)
+```bash
+uv run uvicorn main:app --reload --port 8000
 ```
 
-**What you should see:** a list starting with `[18, 1624, 21, 1885, 28, 1903]` (tiny headings between big chunks), then `422`.
+The first start takes a few seconds: it downloads the file and embeds 16 chunks. Then:
+
+```bash
+curl -s localhost:8000/api/chunks | python3 -c "import sys,json; d=json.load(sys.stdin); print(len(d['chunks']), [c['length'] for c in d['chunks']][:6])"
+curl -s -X POST localhost:8000/api/index -H "Content-Type: application/json" -d '{"chunk_size":200,"chunk_overlap":200}'
+```
+
+**What you should see:** `16 [18, 1624, 21, 1885, 28, 1903]` (tiny headings between big chunks), then a `422` error message about the overlap.
 
 **Frontend.** Create `src/lib/api.ts`:
 
@@ -374,7 +536,7 @@ export default function Home() {
 }
 ```
 
-Run both servers (`uv run uvicorn main:app --reload --port 8000` in `backend/`, `npm run dev` in `frontend/`) and open http://localhost:3000.
+Run the frontend (`npm run dev` in `frontend/`) and open http://localhost:3000.
 
 **What you should see:** `16 chunks` as bars. Several are tiny with a red "tiny, probably a lone heading" badge.
 
@@ -385,7 +547,7 @@ The page asks the backend for chunks and draws a bar per chunk, scaled to the lo
 ### Try it
 
 1. Choose **Recursive**, `chunk_size = 500`, `chunk_overlap = 50`, press **Rebuild index**. How do the bars change?
-2. Set overlap equal to size. Read the error. Where did that message come from?
+2. Restart uvicorn. Does the page show the same chunks without re-embedding? (Check the uvicorn log: no new embedding call.)
 
 ---
 
@@ -395,47 +557,54 @@ The page asks the backend for chunks and draws a bar per chunk, scaled to the lo
 
 When an answer is wrong you do not know why. Was the right chunk **not retrieved**, or did the LLM **ignore it**? You need to look at retrieval on its own.
 
-### The fix: a search endpoint without the LLM
+### The fix: a search endpoint without the LLM, using a SQL query
 
 ```mermaid
 flowchart LR
-    Q["Question"] --> E["Embed"] --> V[("Vector store")] --> H["Top-k chunks with scores"]
+    Q["Question"] --> E["Embed"] --> V["Query vector"]
+    V --> S["SELECT ... ORDER BY embedding <=> query LIMIT k"]
+    T[("lab_chunks")] --> S
+    S --> H["Top-k chunks with scores"]
 ```
+
+pgvector's `<=>` is the **cosine distance** (0 means the same direction). **Similarity is 1 minus distance.** The whole nearest-neighbour search is one `ORDER BY ... LIMIT`.
 
 ### Type this
 
-Add the search method **inside the `Lab` class** in `lab.py`:
+Add the `search` method **inside the `Lab` class** in `lab.py`, below `state`:
 
 ```python
-# needs: goes inside the Lab class in your lab.py
-    def search(self, question: str, k: int) -> list[tuple[Document, float]]:
-        return self.store.similarity_search_with_score(question, k=k)
+# needs: your backend folder (file: lab.py, append)
+    def search(self, question: str, k: int) -> list[dict]:
+        vec = np.array(self.embeddings.embed_query(question))
+        with self.pool.connection() as conn:
+            # <=> is pgvector's cosine DISTANCE (0 = same direction). 1 - distance = similarity.
+            rows = conn.execute(
+                "SELECT id, content AS text, 1 - (embedding <=> %s) AS score FROM lab_chunks ORDER BY embedding <=> %s LIMIT %s",
+                (vec, vec, k),
+            ).fetchall()
+        return [{**r, "score": round(float(r["score"]), 4)} for r in rows]
 ```
 
-In `main.py`:
+In `main.py`, add the endpoint:
 
 ```python
+# needs: your backend folder (file: main.py, append)
 class SearchIn(BaseModel):
     question: str = Field(min_length=1)
     k: int = Field(default=4, ge=1, le=10)
 
 
-def hit_json(hits):
-    return [{"id": d.metadata["chunk_id"], "score": round(float(s), 4), "text": d.page_content} for d, s in hits]
-
-
 @app.post("/api/search")
-def search(body: SearchIn):
-    return {"hits": hit_json(the_lab.search(body.question, body.k))}
+def search(body: SearchIn, request: Request):
+    return {"hits": request.app.state.lab.search(body.question, body.k)}
 ```
 
-```python
-# needs: your finished lab.py and main.py from the steps above, running in your own project
-r = client.post("/api/search", json={"question": "Can I smoke in company vehicles?", "k": 3})
-print([(h["id"], h["score"]) for h in r.json()["hits"]])
+```bash
+curl -s -X POST localhost:8000/api/search -H "Content-Type: application/json" -d '{"question":"Can I smoke in company vehicles?","k":3}'
 ```
 
-**What you should see:** three `(chunk id, score)` pairs. The scores are cosine similarities: higher means closer.
+**What you should see:** three hits with `id`, `text` and a `score` (for example `0.56`), highest first. The top one is about smoking.
 
 **Frontend.** Create `src/components/search-panel.tsx`:
 
@@ -526,12 +695,13 @@ export default function Home() {
 
 ### Why it works
 
-`similarity_search_with_score` embeds the question with the **same** embedding model and returns the nearest chunks with their scores. No LLM is called, so it is fast and cheap.
+The question is embedded with the **same** model as the chunks, then Postgres returns the nearest rows. No LLM is called, so it is fast and cheap. The query works because the `<=>` operator is the same one the HNSW index was built for.
 
 ### Try it
 
 1. Search the same question after switching to **Recursive** chunks of 500. Do the top chunks get more focused?
 2. Search "summarize the document". Are the scores all low? This is why whole-document questions are hard for simple RAG.
+3. In psql, run `EXPLAIN SELECT id FROM lab_chunks ORDER BY embedding <=> (SELECT embedding FROM lab_chunks WHERE id = 0) LIMIT 4;` and read the plan. (With only 16 rows Postgres may prefer a plain scan. The index pays off with thousands.)
 
 ---
 
@@ -555,61 +725,75 @@ flowchart LR
 
 ### Type this
 
-Add the two prompts to `lab.py`, above the `Lab` class. They are the lab's two versions of the prompt:
+Create `backend/qa.py` with the two prompts from the lab and a function that answers. For now it ignores `history` (step 5 uses it):
 
 ```python
+# needs: your backend folder (file: qa.py)
+"""Prompts and the question-answering step. It uses a Lab only to search."""
+from langchain_core.output_parsers import StrOutputParser
+from langchain_core.prompts import ChatPromptTemplate
+from langchain_openai import ChatOpenAI
+
+from lab import Lab
+
+# The lab's first prompt has no safety rule. The second is the "I don't know" version.
 LOOSE = "Use the context to answer the question.\n\nContext:\n{context}\n\nQuestion: {question}"
 STRICT = (
     "Use only the context below to answer the question at the end. "
     "If the answer is not in the context, say \"I don't know\". "
     "Do not make up an answer.\n\nContext:\n{context}\n\nQuestion: {question}"
 )
+
+
+def answer(lab: Lab, question: str, k: int, strict: bool, history: list[dict]):
+    llm = ChatOpenAI(model="gpt-4o-mini", temperature=0, max_tokens=300)
+    hits = lab.search(question, k)
+    context = "\n\n".join(h["text"] for h in hits)
+    prompt = ChatPromptTemplate.from_template(STRICT if strict else LOOSE)
+    reply = (prompt | llm | StrOutputParser()).invoke({"context": context, "question": question})
+    return reply, question, hits
 ```
 
-Add `ask` **inside the class**:
+In `main.py`, add the endpoint. The request already has a `history` field for step 5:
 
 ```python
-# needs: goes inside the Lab class in your lab.py
-    def ask(self, question: str, k: int, strict: bool):
-        llm = ChatOpenAI(model="gpt-4o-mini", temperature=0, max_tokens=300)
-        hits = self.search(question, k)
-        context = "\n\n".join(d.page_content for d, _ in hits)
-        prompt = ChatPromptTemplate.from_template(STRICT if strict else LOOSE)
-        answer = (prompt | llm | StrOutputParser()).invoke({"context": context, "question": question})
-        return answer, hits
-```
+# needs: your backend folder (file: main.py, append)
+import qa  # noqa: E402  (move imports to the top of the file if you like)
 
-In `main.py`:
 
-```python
-# needs: the Lab.ask method above, in your own project
+class Turn(BaseModel):
+    role: Literal["user", "assistant"]
+    content: str
+
+
 class AskIn(SearchIn):
     strict: bool = True
+    history: list[Turn] = []
 
 
 @app.post("/api/ask")
-def ask(body: AskIn):
-    answer, hits = the_lab.ask(body.question, body.k, body.strict)
-    return {"answer": answer, "hits": hit_json(hits)}
+def ask(body: AskIn, request: Request):
+    history = [t.model_dump() for t in body.history]
+    reply, standalone, hits = qa.answer(request.app.state.lab, body.question, body.k, body.strict, history)
+    return {"answer": reply, "standalone_question": standalone, "hits": hits}
 ```
 
-```python
-# needs: your finished lab.py and main.py, running in your own project
-r = client.post("/api/ask", json={"question": "Can I eat in company vehicles?", "strict": True})
-print(r.status_code, r.json()["answer"])
+Try the trap question with the rule on and off:
+
+```bash
+curl -s -X POST localhost:8000/api/ask -H "Content-Type: application/json" -d '{"question":"Can I eat in company vehicles?","strict":false}'
+curl -s -X POST localhost:8000/api/ask -H "Content-Type: application/json" -d '{"question":"Can I eat in company vehicles?","strict":true}'
 ```
 
-**What you should see** (example): `200` and, with the real model, `I don't know.`
-
-**Frontend.** For now, keep it simple: use `curl` or the docs page at http://localhost:8000/docs to try `strict: true` and `strict: false`. The full chat page comes in Step 5.
+**What you should see** (example): with `"strict": false` the model may answer anyway. With `true` it says `I don't know.`
 
 ### Why it works
 
-The only difference between the two prompts is one instruction. That instruction is the lab's whole "Using prompt template" section: the model is told to trust the context and to decline when it is not there.
+The only difference between the two prompts is one instruction. That instruction is the lab's whole "Using prompt template" section: trust the context, and decline when it is not there.
 
 ### Try it
 
-Send the eat-in-vehicles question with `strict: false`, then `true`. Compare. Which one is grounded?
+Send the eat-in-vehicles question with `strict` false, then true. Compare. Which one is grounded?
 
 ---
 
@@ -626,11 +810,11 @@ sequenceDiagram
     participant P as Ask tab
     participant A as FastAPI
     participant R as Rewriter LLM
-    participant S as Retriever
+    participant D as Postgres
     P->>A: question, history, memory on
     A->>R: rewrite using history
-    R->>S: standalone question
-    S->>A: top chunks
+    R->>D: search with the standalone question
+    D->>A: top chunks
     A->>P: answer, rewritten question, chunks
 ```
 
@@ -638,54 +822,53 @@ sequenceDiagram
 
 ### Type this
 
-In `lab.py`, add the rewrite prompt above the class:
+Replace `backend/qa.py` with a version that uses `history`. It adds a rewrite prompt and one extra model call when there is history:
 
 ```python
+# needs: your backend folder (file: qa.py)
+"""Prompts and the question-answering step. It uses a Lab only to search."""
+from langchain_core.messages import AIMessage, HumanMessage
+from langchain_core.output_parsers import StrOutputParser
+from langchain_core.prompts import ChatPromptTemplate, MessagesPlaceholder
+from langchain_openai import ChatOpenAI
+
+from lab import Lab
+
+# The lab's first prompt has no safety rule. The second is the "I don't know" version.
+LOOSE = "Use the context to answer the question.\n\nContext:\n{context}\n\nQuestion: {question}"
+STRICT = (
+    "Use only the context below to answer the question at the end. "
+    "If the answer is not in the context, say \"I don't know\". "
+    "Do not make up an answer.\n\nContext:\n{context}\n\nQuestion: {question}"
+)
 REWRITE = ChatPromptTemplate.from_messages([
     ("system", "Rewrite the user's last question so it makes sense on its own, "
                "using the chat history. Return only the question."),
     MessagesPlaceholder("history"),
     ("human", "{question}"),
 ])
+
+
+def answer(lab: Lab, question: str, k: int, strict: bool, history: list[dict]):
+    llm = ChatOpenAI(model="gpt-4o-mini", temperature=0, max_tokens=300)
+    messages = [HumanMessage(m["content"]) if m["role"] == "user" else AIMessage(m["content"]) for m in history]
+    standalone = question
+    if messages:
+        standalone = (REWRITE | llm | StrOutputParser()).invoke({"history": messages, "question": question})
+    hits = lab.search(standalone, k)
+    context = "\n\n".join(h["text"] for h in hits)
+    prompt = ChatPromptTemplate.from_template(STRICT if strict else LOOSE)
+    reply = (prompt | llm | StrOutputParser()).invoke({"context": context, "question": standalone})
+    return reply, standalone, hits
 ```
 
-Replace `ask` with a version that takes `history`:
+`main.py` does not change. Test memory with curl:
 
-```python
-# needs: replaces the ask method inside the Lab class in your lab.py
-    def ask(self, question: str, k: int, strict: bool, history: list[dict]):
-        llm = ChatOpenAI(model="gpt-4o-mini", temperature=0, max_tokens=300)
-        messages = [HumanMessage(m["content"]) if m["role"] == "user" else AIMessage(m["content"]) for m in history]
-        standalone = question
-        if messages:
-            standalone = (REWRITE | llm | StrOutputParser()).invoke({"history": messages, "question": question})
-        hits = self.search(standalone, k)
-        context = "\n\n".join(d.page_content for d, _ in hits)
-        prompt = ChatPromptTemplate.from_template(STRICT if strict else LOOSE)
-        answer = (prompt | llm | StrOutputParser()).invoke({"context": context, "question": standalone})
-        return answer, standalone, hits
+```bash
+curl -s -X POST localhost:8000/api/ask -H "Content-Type: application/json" -d '{"question":"List the points in it.","history":[{"role":"user","content":"What is the mobile phone policy?"},{"role":"assistant","content":"It covers phone use at work."}]}'
 ```
 
-In `main.py`, replace `AskIn` and the endpoint:
-
-```python
-# needs: replaces AskIn and the ask endpoint from Step 4 in your main.py
-class Turn(BaseModel):
-    role: Literal["user", "assistant"]
-    content: str
-
-
-class AskIn(SearchIn):
-    strict: bool = True
-    history: list[Turn] = []
-
-
-@app.post("/api/ask")
-def ask(body: AskIn):
-    history = [t.model_dump() for t in body.history]
-    answer, standalone, hits = the_lab.ask(body.question, body.k, body.strict, history)
-    return {"answer": answer, "standalone_question": standalone, "hits": hit_json(hits)}
-```
+**What you should see:** `standalone_question` in the reply is a full question about the mobile phone policy, and the hits are phone-related.
 
 Now the chat page. Create `src/components/ask-panel.tsx`:
 
@@ -856,6 +1039,101 @@ The history lives in the browser and goes with every request, because the server
 
 ---
 
+## Test the real stack
+
+No fakes. With Postgres and the API running, this test uses the real database and the real OpenAI API (a fraction of a cent). Create `backend/test_live.py`:
+
+```python
+# needs: your backend folder (file: test_live.py)
+"""Live test of the real stack. No fakes.
+
+Needs Postgres running (docker compose up -d postgres) and the API on port 8000
+(uv run uvicorn main:app --port 8000, or the whole stack with docker compose up).
+It calls the real OpenAI API, so it costs a fraction of a cent.
+
+    uv run python test_live.py
+"""
+import os
+
+import httpx
+
+API = os.getenv("API_URL", "http://localhost:8000")
+client = httpx.Client(base_url=API, timeout=60)
+
+
+def test_pipeline() -> None:
+    assert client.get("/api/health").json() == {"status": "ok"}
+
+    # The lab's own splitter: 16 chunks, and some are lone headings.
+    built = client.post("/api/index", json={"splitter": "character", "chunk_size": 1000, "chunk_overlap": 0}).json()
+    assert len(built["chunks"]) == 16, len(built["chunks"])
+    assert any(c["length"] < 60 for c in built["chunks"]), "expected tiny heading-only chunks"
+
+    # State comes from Postgres, so a second read returns the same thing.
+    assert client.get("/api/chunks").json() == built
+
+    hits = client.post("/api/search", json={"question": "Can I smoke in company vehicles?", "k": 3}).json()["hits"]
+    assert len(hits) == 3 and hits[0]["score"] > hits[-1]["score"]
+    assert "smok" in hits[0]["text"].lower(), hits[0]["text"][:80]
+
+    # A better splitter gives more, smaller chunks, and replaces the old ones.
+    better = client.post("/api/index", json={"splitter": "recursive", "chunk_size": 500, "chunk_overlap": 50}).json()
+    assert len(better["chunks"]) > 30 and max(c["length"] for c in better["chunks"]) <= 500
+    assert client.get("/api/chunks").json()["settings"]["splitter"] == "recursive"
+    client.post("/api/index", json={"splitter": "character", "chunk_size": 1000, "chunk_overlap": 0})  # put the lab's settings back
+
+
+def test_answers() -> None:
+    body = {"question": "Can I smoke in company vehicles?", "k": 3, "strict": True}
+    smoke = client.post("/api/ask", json=body).json()
+    assert "not" in smoke["answer"].lower(), smoke["answer"]
+
+    # The lab's trap question. With the rule on, the model should decline.
+    eat = client.post("/api/ask", json={**body, "question": "Can I eat in company vehicles?"}).json()
+    assert "know" in eat["answer"].lower(), eat["answer"]
+
+    # Memory: a follow-up with no topic words is rewritten using the history.
+    history = [{"role": "user", "content": "What is the mobile phone policy?"}, {"role": "assistant", "content": "It covers phone use at work."}]
+    follow = client.post("/api/ask", json={"question": "List the points in it.", "k": 3, "strict": True, "history": history}).json()
+    assert "phone" in follow["standalone_question"].lower(), follow["standalone_question"]
+
+
+def test_validation() -> None:
+    assert client.post("/api/index", json={"chunk_size": 200, "chunk_overlap": 200}).status_code == 422
+    assert client.post("/api/search", json={"question": "", "k": 3}).status_code == 422
+    assert client.post("/api/search", json={"question": "x", "k": 99}).status_code == 422
+
+
+if __name__ == "__main__":
+    for test in (test_pipeline, test_answers, test_validation):
+        test()
+        print("ok  ", test.__name__)
+    print("ALL LIVE TESTS PASSED")
+```
+
+```bash
+cd course2/module1/my-lab/backend
+uv run python test_live.py
+```
+
+**What you should see:** `ALL LIVE TESTS PASSED`. It proves, against the real thing: the lab's splitter gives 16 chunks with tiny headings, the state comes back from Postgres, search returns the smoking chunk first, a better splitter replaces the old chunks, the strict rule makes the trap question get "I don't know", and a follow-up is rewritten into a standalone question. It does **not** prove the page looks right (try it by hand). LLM text varies, so the checks look for facts, not exact wording.
+
+---
+
+## Run it all with Docker
+
+The finished app in [../app/](../app/) has a `docker-compose.yml` with three services: `postgres` (pgvector), `backend` and `frontend`. One command starts them:
+
+```bash
+cd course2/module1/app
+cp .env.example .env     # then put your OPENAI_API_KEY in .env
+docker compose up --build
+```
+
+See the [app README](../app/README.md) for the details.
+
+---
+
 ## The whole app
 
 ```mermaid
@@ -869,22 +1147,25 @@ flowchart TB
         E1["POST /api/index, GET /api/chunks"]
         E2["POST /api/search"]
         E3["POST /api/ask"]
-        L["Lab: build, search, ask"]
+        L["Lab: build, state, search"]
+        Q["qa: prompts, rewrite, answer"]
     end
+    PG[("Postgres + pgvector: lab_chunks, lab_settings")]
     T1 --> E1 --> L
     T2 --> E2 --> L
-    T3 -->|"question, history, strict, k"| E3 --> L
-    L --> V[("Vector store")]
-    L --> O["OpenAI"]
+    T3 -->|"question, history, strict, k"| E3 --> Q --> L
+    L --> PG
+    L --> O["OpenAI embeddings"]
+    Q --> C["OpenAI chat"]
 ```
 
 | Lab section | Where |
 |---|---|
 | Load the document | `load_policies` |
 | Splitting into chunks | `Lab.build`, Chunks tab |
-| Embedding and storing | `Lab.build` (`InMemoryVectorStore`) |
-| LLM model | `ChatOpenAI` inside `ask` |
-| Retrieval (`RetrievalQA`) | `Lab.search` plus the prompt in `ask` |
+| Embedding and storing | `Lab.build` writes to the `lab_chunks` table (pgvector replaces Chroma) |
+| LLM model | `ChatOpenAI` inside `qa.answer` |
+| Retrieval (`RetrievalQA`) | `Lab.search` (SQL) plus the prompt in `qa.answer` |
 | Prompt template | `LOOSE` and `STRICT` |
 | Memory | `history` and `REWRITE` |
 | Exercise 2: return the source | the "Chunks used" block |
@@ -893,34 +1174,39 @@ flowchart TB
 
 | Mistake | What you see | Fix |
 |---|---|---|
+| Postgres not running | `connection refused` when uvicorn starts | `docker compose up -d`, wait for the health check. |
+| Port 5432 already used | `docker compose up` fails | Stop the other Postgres (for example the OWASP chat app's), or change the left side of `"5432:5432"` and `DATABASE_URL`. |
+| Vector size mismatch | `expected 1536 dimensions, not 3072` | The `vector(N)` column and the embedding model must agree. |
+| `type "vector" does not exist` | Error on startup | Use the `pgvector/pgvector` image and keep `CREATE EXTENSION` in `schema.sql`. |
+| Registered pgvector before the extension existed | `vector type not found in the database` | Run `init_schema()` before opening the pool. |
 | Backend not running | "Cannot reach the backend" or `Failed to fetch` | Start `uv run uvicorn main:app --reload --port 8000`. |
-| CORS missing | "blocked by CORS policy" | Add the middleware with `http://localhost:3000`. |
-| Port 3000 already used by the module 2 app | Next.js picks another port, and CORS blocks it | Stop the other app, or add the new port to `allow_origins`. |
+| CORS missing | "blocked by CORS policy" | Allow `http://localhost:3000` in the middleware. |
+| Port 3000 used by the module 2 app | Next.js picks another port, and CORS blocks it | Stop the other app, or add the new port to `FRONTEND_ORIGINS`. |
 | Overlap not smaller than size | `422` with a message | Lower the overlap. |
-| Old chunks after rebuilding | Strange results | Create a **fresh** `InMemoryVectorStore` in `build`. |
+| Changed splitter settings but old results | Stale chunks | `build` deletes all rows first. Check it ran in a transaction. |
 | Missing API key | `500` with `api_key` in the log | Put `OPENAI_API_KEY` in the root `.env`, restart uvicorn. |
-| Download fails | Error on first start | Check your network and delete a half-written `data/companyPolicies.txt`. |
-| Server restart | Index resets | It is in memory. Rebuild from the Chunks tab. |
 
 ## Practice
 
 No answers shown. Ask me for a hint.
 
-1. **Your own file.** The lab's Exercise 1 gives a second document (`XVnuuEg94sAE4S_xAsGxBA.txt`). Add a way to switch documents. What must be rebuilt?
-2. **Show the file position.** Add `add_start_index=True` to the splitters and show it in the Chunks tab.
+1. **Your own file.** The lab's Exercise 1 gives a second document (`XVnuuEg94sAE4S_xAsGxBA.txt`). Add a way to switch documents. What must change in the tables so two documents can coexist?
+2. **Show the file position.** Store each chunk's start position in a new column and show it in the Chunks tab.
 3. **Score cutoff.** In `/api/ask`, return "I don't know" without the LLM if the best score is below a number. Where should the number live?
-4. **Another model.** The lab's Exercise 3 swaps the model. Add a model dropdown (allow-list it on the server).
+4. **Another model.** The lab's Exercise 3 swaps the model. Add a model dropdown (allow-list it on the server). What breaks if the new embedding model has a different size?
 5. **Compare splitters.** For three questions, record the top chunk id for Character and Recursive. Which splitter finds the right chunk more often? Why?
-6. **Explain it.** In six sentences, tell a friend what each tab shows about the RAG pipeline.
+6. **Do we need Redis?** Name one feature that would make you add it here (hint: look at what the OWASP chat uses it for).
+7. **Explain it.** In six sentences, tell a friend what each tab shows about the RAG pipeline.
 
 ## Cheat sheet
 
 | Step | Problem | Added |
 |---|---|---|
-| 1 | Pipeline in cells | `Lab` class |
+| 0 | Nowhere to keep vectors | Postgres with pgvector in Docker |
+| 1 | Pipeline in cells | `schema.sql`, `db.py`, `Lab` class |
 | 2 | Chunks invisible | `/api/index`, `/api/chunks`, Chunks tab |
-| 3 | Retrieval invisible | `/api/search`, Search tab |
-| 4 | Makes things up | `STRICT` vs `LOOSE` prompt, `/api/ask` |
+| 3 | Retrieval invisible | `Lab.search` (SQL, `<=>`), `/api/search`, Search tab |
+| 4 | Makes things up | `STRICT` vs `LOOSE` prompt in `qa.py`, `/api/ask` |
 | 5 | Forgets | history plus `REWRITE`, Ask tab |
 
 Back to [Tutorial 1](01-rag-study-guide-and-lab-adapted.md) or [Tutorial 2](02-rag-build-a-notes-bot.md).

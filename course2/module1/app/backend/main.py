@@ -1,30 +1,37 @@
 """FastAPI app for the RAG lab. One endpoint per pipeline stage."""
+import os
+from contextlib import asynccontextmanager
 from typing import Literal
 
-from fastapi import FastAPI, HTTPException
+from fastapi import FastAPI, HTTPException, Request
 from fastapi.middleware.cors import CORSMiddleware
 from pydantic import BaseModel, Field
 
+import db
+import qa
 from lab import Lab
 
-app = FastAPI(title="RAG Lab")
+
+@asynccontextmanager
+async def lifespan(app: FastAPI):
+    db.init_schema()
+    pool = db.make_pool()
+    pool.open()
+    app.state.pool = pool
+    app.state.lab = Lab(pool)
+    if not app.state.lab.is_built():  # first run only: the index then survives restarts in Postgres
+        app.state.lab.build("character", 1000, 0)  # the lab's own settings
+    yield
+    pool.close()
+
+
+app = FastAPI(title="RAG Lab", lifespan=lifespan)
 app.add_middleware(
     CORSMiddleware,
-    allow_origins=["http://localhost:3000", "http://127.0.0.1:3000"],
+    allow_origins=os.getenv("FRONTEND_ORIGINS", "http://localhost:3000,http://127.0.0.1:3000").split(","),
     allow_methods=["*"],
     allow_headers=["*"],
 )
-
-_lab: Lab | None = None
-
-
-def lab() -> Lab:
-    # Built on first use, with the lab's own settings, so the first page load already works.
-    global _lab
-    if _lab is None:
-        _lab = Lab()
-        _lab.build("character", 1000, 0)
-    return _lab
 
 
 class IndexIn(BaseModel):
@@ -48,45 +55,32 @@ class AskIn(SearchIn):
     history: list[Turn] = []
 
 
-def chunk_summary(docs):
-    return [{"id": d.metadata["chunk_id"], "length": len(d.page_content), "text": d.page_content} for d in docs]
-
-
-def hit_json(hits):
-    return [{"id": d.metadata["chunk_id"], "score": round(float(s), 4), "text": d.page_content} for d, s in hits]
-
-
 @app.get("/api/health")
 def health():
     return {"status": "ok"}
 
 
-@app.get("/api/document")
-def document():
-    return {"name": "companyPolicies.txt", "characters": len(lab().text), "text": lab().text}
-
-
 @app.get("/api/chunks")
-def chunks():
-    return {"settings": lab().settings, "chunks": chunk_summary(lab().chunks)}
+def chunks(request: Request):
+    return request.app.state.lab.state()
 
 
 @app.post("/api/index")
-def index(body: IndexIn):
+def index(body: IndexIn, request: Request):
     if body.chunk_overlap >= body.chunk_size:
         raise HTTPException(status_code=422, detail="chunk_overlap must be smaller than chunk_size")
-    lab().build(body.splitter, body.chunk_size, body.chunk_overlap)
-    return {"settings": lab().settings, "chunks": chunk_summary(lab().chunks)}
+    lab = request.app.state.lab
+    lab.build(body.splitter, body.chunk_size, body.chunk_overlap)
+    return lab.state()
 
 
 @app.post("/api/search")
-def search(body: SearchIn):
-    return {"hits": hit_json(lab().search(body.question, body.k))}
+def search(body: SearchIn, request: Request):
+    return {"hits": request.app.state.lab.search(body.question, body.k)}
 
 
 @app.post("/api/ask")
-def ask(body: AskIn):
+def ask(body: AskIn, request: Request):
     history = [t.model_dump() for t in body.history]
-    answer, standalone, hits = lab().ask(body.question, body.k, body.strict, history)
-    return {"answer": answer, "standalone_question": standalone, "hits": hit_json(hits)}
-
+    reply, standalone, hits = qa.answer(request.app.state.lab, body.question, body.k, body.strict, history)
+    return {"answer": reply, "standalone_question": standalone, "hits": hits}
