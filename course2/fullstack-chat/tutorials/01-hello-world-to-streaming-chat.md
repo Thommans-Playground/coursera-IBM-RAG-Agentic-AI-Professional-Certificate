@@ -9,7 +9,7 @@
 | 2 | Real AI answers (all at once) |
 | 3 | Answers that **stream** |
 
-This is part 1 of 5:
+This is part 1 of 6:
 
 | Part | Adds |
 |---|---|
@@ -18,6 +18,7 @@ This is part 1 of 5:
 | [3](03-pgvector-owasp-knowledge-base.md) | **pgvector**: an OWASP Top 10 knowledge base and RAG |
 | [4](04-redis-and-celery.md) | **Redis and Celery**: background loading and rate limiting |
 | [5](05-docker-compose.md) | **Docker**: one command runs it all |
+| [6](06-ddd-and-hexagonal.md) | **DDD and hexagonal architecture**: refactor into contexts and ports |
 
 By the end you have an OWASP Top 10 chatbot. Everything is real: real Postgres, Redis, Celery worker and OpenAI API, with no fakes.
 

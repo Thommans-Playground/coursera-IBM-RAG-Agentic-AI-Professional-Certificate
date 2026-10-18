@@ -15,7 +15,7 @@ A follow-along guide that starts from a **hello world** and ends with a ChatGPT-
 
 > **Content and license.** The OWASP Top 10 text is published by the OWASP Foundation under [CC BY-SA 4.0](https://creativecommons.org/licenses/by-sa/4.0/) ([source](https://github.com/OWASP/Top10)). The app downloads it at load time and links back to owasp.org.
 
-**How to use this guide:** do the five tutorials in order. Each ends with a working app. A finished copy is in [app/](app/).
+**How to use this guide:** do the six tutorials in order. Each ends with a working app. There are two finished copies: [app/](app/) (layered, the end of parts 1 to 5) and [app-hexagonal/](app-hexagonal/) (the end of part 6). Same behaviour and the same API, so you can compare the two structures side by side.
 
 ## Contents
 
@@ -38,6 +38,7 @@ A follow-along guide that starts from a **hello world** and ends with a ChatGPT-
 | [3: pgvector and an OWASP knowledge base](tutorials/03-pgvector-owasp-knowledge-base.md) | Part 2 | RAG: sourced answers from the OWASP pages |
 | [4: Redis and Celery](tutorials/04-redis-and-celery.md) | Part 3 | Background loading with a status panel, a rate limit, a live test |
 | [5: Run everything with Docker](tutorials/05-docker-compose.md) | Part 4 | Dockerfiles and a compose file: one command starts all five services |
+| [6: Refactor to DDD and hexagonal architecture](tutorials/06-ddd-and-hexagonal.md) | Part 5 | The same app in two bounded contexts, each a hexagon, with an architecture test |
 
 Related: the course apps [module 1](../module1/app/) and [module 2](../module2/app/) use the same Next.js and FastAPI pairing for the RAG labs.
 
@@ -138,6 +139,9 @@ Each piece is added only when a problem demands it.
 | Images, layer caching, non-root users, health checks, `depends_on`, volumes, build-time vs run-time settings | Part 5 |
 | Rate limiting with `INCR` and `EXPIRE` | Part 4 |
 | Testing the real stack | Part 4 |
+| Bounded contexts, ubiquitous language, entities and value objects | Part 6 |
+| Ports and adapters, use cases, the composition root, an anti-corruption gateway | Part 6 |
+| Architecture tests that enforce the dependency rule | Part 6 |
 
 ---
 
@@ -183,7 +187,7 @@ cd course2/fullstack-chat/app/backend && uv run python test_live.py
 
 Frontend checks: `cd app/frontend && npx tsc --noEmit && npm run lint && npm run build`.
 
-Ports 3000, 8000, 5432 and 6379 are used. The other course apps use some of the same ports, so run one at a time.
+Ports 3000, 8000, 5432 and 6379 are used. The other course apps, and `app-hexagonal/`, use the same ports, so run one at a time. For the hexagonal version, see [app-hexagonal/README.md](app-hexagonal/README.md).
 
 Packages added to the root `pyproject.toml` for this guide: `celery`, `redis`, `psycopg[binary]`, `psycopg-pool`, `pgvector`, `httpx`.
 

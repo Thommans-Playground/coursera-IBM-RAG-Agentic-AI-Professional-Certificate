@@ -4,7 +4,7 @@
 
 Everything here is real: a real Postgres database in Docker, the real OpenAI API. No fakes.
 
-This is part 2 of 5:
+This is part 2 of 6:
 
 | Part | Adds |
 |---|---|
@@ -13,6 +13,7 @@ This is part 2 of 5:
 | [3](03-pgvector-owasp-knowledge-base.md) | pgvector: an OWASP Top 10 knowledge base and RAG |
 | [4](04-redis-and-celery.md) | Redis and Celery: background loading and rate limiting |
 | [5](05-docker-compose.md) | **Docker**: one command runs it all |
+| [6](06-ddd-and-hexagonal.md) | **DDD and hexagonal architecture**: refactor into contexts and ports |
 
 ## The path
 

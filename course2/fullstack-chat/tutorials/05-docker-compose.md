@@ -2,7 +2,7 @@
 
 **What you build.** One command that starts the whole OWASP chatbot: Postgres with pgvector, Redis, the API, the Celery worker and the Next.js page. Until now you ran five things in separate terminals. After this tutorial, you run one.
 
-This is part 5 of 5. You need [part 4](04-redis-and-celery.md) working, so you know what each piece does:
+This is part 5 of 6. You need [part 4](04-redis-and-celery.md) working, so you know what each piece does:
 
 | Part | Adds |
 |---|---|
@@ -11,6 +11,7 @@ This is part 5 of 5. You need [part 4](04-redis-and-celery.md) working, so you k
 | [3](03-pgvector-owasp-knowledge-base.md) | pgvector: the OWASP knowledge base and RAG |
 | [4](04-redis-and-celery.md) | Redis and Celery: background loading, rate limiting |
 | **5** | **Docker: one command to run it all** |
+| [6](06-ddd-and-hexagonal.md) | DDD and hexagonal architecture |
 
 > **Ports.** The Docker setup uses ports 3000, 8000, 5432 and 6379. Stop the dev servers and any containers from the earlier parts first (`docker compose down` in `my-chat/`), or you will see "port is already allocated".
 
@@ -352,4 +353,4 @@ No answers shown. Ask me for a hint.
 | Stop and delete data | `docker compose down -v` |
 | Only the databases (for dev) | `docker compose up -d postgres redis` |
 
-Back to the [guide](../README.md).
+Next: [Part 6: Refactor to DDD and hexagonal architecture](06-ddd-and-hexagonal.md).
