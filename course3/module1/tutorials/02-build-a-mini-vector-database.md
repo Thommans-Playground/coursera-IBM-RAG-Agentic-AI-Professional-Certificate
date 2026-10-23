@@ -413,7 +413,7 @@ flowchart TD
 | `EditableDB` | get, update, delete | CRUD, the library/database split |
 | `PersistentDB` | save, load | persistence |
 
-**What this is not.** Every search compares the question to **every** vector (brute force). That is fine for 77 paragraphs and too slow for millions. Real vector databases add an **approximate nearest neighbour index** (graph, tree or hashing structures) so they check a small fraction. They also add concurrency, scaling across machines and security. That is the "indexing and scalability" row of the course's comparison table. **Beyond the video:** the next lesson uses Chroma DB, which gives you all of this.
+**What this is not.** Every search compares the question to **every** vector (brute force). That is fine for 77 paragraphs and too slow for millions. Real vector databases add an **approximate nearest neighbour index** (graph, tree or hashing structures) so they check a small fraction. They also add concurrency, scaling across machines and security. That is the "indexing and scalability" row of the course's comparison table. **Beyond the video:** the course's next lesson uses Chroma DB, which gives you all of this. [Tutorial 4](04-chroma-db-adapted.md) does it with the real thing and ends with a table mapping each class here to what Chroma provides.
 
 ## Common mistakes
 

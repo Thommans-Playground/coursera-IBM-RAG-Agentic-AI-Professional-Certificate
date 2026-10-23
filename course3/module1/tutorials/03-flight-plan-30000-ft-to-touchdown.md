@@ -2,7 +2,7 @@
 
 > **Destination:** by touchdown you can explain vector databases and similarity search to a friend in one sentence, to a teammate in one diagram, and to a computer in ten lines of NumPy.
 
-**How this flight works.** The same module, told six times. We start at cruising altitude, where only the shape of the idea is visible, and descend in stages. Each stage adds detail and drops the abstraction. If a stage feels confusing, climb back one level: the stage above always explains the "why" for the stage below.
+**How this flight works.** The same module, told seven times, then flown again in a real database (Chroma DB). We start at cruising altitude, where only the shape of the idea is visible, and descend in stages. Each stage adds detail and drops the abstraction. If a stage feels confusing, climb back one level: the stage above always explains the "why" for the stage below.
 
 Want the reference guide? See the [module README](../README.md). Want to build a small database? See [Tutorial 2](02-build-a-mini-vector-database.md). Want the course order? See [Tutorial 1](01-vector-databases-and-similarity-search-adapted.md).
 
@@ -16,6 +16,7 @@ flowchart TD
     D --> E["1,000 ft: the arithmetic"]
     E --> F["100 ft: the code"]
     F --> G["Touchdown: a real search"]
+    G --> H["Taxi: the same search in Chroma"]
 ```
 
 | Altitude | You see | You can answer |
@@ -27,6 +28,7 @@ flowchart TD
 | 1,000 ft | the formulas | how is it calculated? |
 | 100 ft | every line | how do I type it? |
 | Touchdown | it runs | does it work? |
+| Taxi to the gate | a real database | how do I do this in production? |
 
 ## Pre-flight check
 
@@ -129,6 +131,10 @@ flowchart LR
     K --> T["With timestamps: patterns over time"]
 ```
 
+### Decision 4: which product?
+
+Our running example is **Chroma DB**: an open-source, dedicated vector database. Its vocabulary is small: a **client** (your connection), **collections** (its tables), **metadata and document filters**, and an **HNSW index** that makes search fast. You will fly the same search in it at the end.
+
 Also: **dedicated** vector databases (Faiss, Annoy, Milvus) are fastest. Ordinary databases with a vector add-on (PostgreSQL, MongoDB, Elasticsearch) are convenient, because you keep one system, but may be slower.
 
 **Descent check.** Your product catalogue is in PostgreSQL and you have 50,000 items. What is a sensible start? *PostgreSQL with vector search: one system, small data. Move to a dedicated database if it gets slow.*
@@ -218,6 +224,16 @@ flowchart LR
 | Dot product | 86 | bigger is closer |
 | Cosine similarity | 0.767 | bigger is closer, max 1 |
 
+### Why a database does not use this arithmetic on every row
+
+Scoring the query against **every** stored vector is fine for five movies and too slow for a billion. A **vector index** such as **HNSW** (Chroma's) organises vectors in layers, like the descent you are flying: a sparse top layer for long jumps, a full bottom layer for detail. A search starts at the top, jumps towards the query, drops down a layer, and repeats, so it touches only a small part of the data. The price: it is **approximate** and can rarely miss the true nearest vector.
+
+```mermaid
+flowchart TD
+    T["Top layer: few points, long jumps"] --> M["Middle: more points, shorter jumps"]
+    M --> B["Bottom: all points, fine search"]
+```
+
 **Descent check.** Double every number in `a`. Which of the three results stay exactly the same? *Only cosine. L2 and the dot product both change, because the length changed.*
 
 ---
@@ -296,6 +312,8 @@ print((rows @ query).round(2))
 
 Row 3 scores 1.0: identical direction. That one line is a whole database search, minus the speed tricks.
 
+**Same arithmetic, inside Chroma.** You will meet these in the final stage, as a `space` setting: `"l2"` (squared L2), `"ip"` (one minus the dot product) and `"cosine"` (one minus the cosine similarity).
+
 **Descent check.** What does `rows @ query` return, in words? *One similarity score per row: how well each stored vector points the same way as the query.*
 
 ---
@@ -359,6 +377,75 @@ The only difference between this toy and a real system is where the vectors come
 
 ---
 
+## Taxi to the gate: the same search in Chroma
+
+> *Altimeter 0. Ground speed 15. Same passengers, a bigger airport.*
+
+The landing above was your own ten lines. A real vector database does the same job and adds what you would otherwise build: an index, filters, update and delete, persistence. Chroma is installed in the repo (`uv add chromadb`). We give it the **same hand-picked vectors**, so no model download is needed.
+
+```mermaid
+flowchart LR
+    V["Your vectors"] --> A["collection.add"]
+    A --> C[("Chroma collection with HNSW")]
+    Q["Query vector"] --> S["collection.query"]
+    C --> S
+    S --> R["Ids and distances"]
+```
+
+**Create a collection** that scores by cosine. `embedding_function=None` says: we bring our own vectors.
+
+```python
+import chromadb
+
+client = chromadb.Client()
+films = client.create_collection(
+    name="films",
+    configuration={"hnsw": {"space": "cosine"}, "embedding_function": None},
+)
+films.add(ids=names, embeddings=[[9, 1], [1, 9], [5, 6], [10, 0], [3, 8]])
+```
+
+**Search.** Same query as before:
+
+```python
+found = films.query(query_embeddings=[[8, 2]], n_results=3)
+print(found["ids"][0])
+print([round(d, 3) for d in found["distances"][0]])
+```
+
+```
+['Fast Cars', 'Explosions', 'Spy Romance']
+[0.009, 0.03, 0.193]
+```
+
+**Compare with the hand-built result.** Same three films, same order. Chroma reports a **distance**, and cosine distance is `1 - similarity`: `1 - 0.991 = 0.009`, `1 - 0.97 = 0.03`, `1 - 0.807 = 0.193`. Smaller is closer.
+
+```python
+print(all(abs((1 - score) - dist) < 0.002
+          for (_, score), dist in zip(search([8, 2]), found["distances"][0])))
+```
+
+```
+True
+```
+
+**Same cosine promise** (length ignored):
+
+```python
+again = films.query(query_embeddings=[[80, 20]], n_results=3)
+print(again["ids"][0] == found["ids"][0])
+```
+
+```
+True
+```
+
+**What the real database adds.** Give Chroma text instead of vectors (it embeds for you), then filter and tune. That is the next flight: [Tutorial 4](04-chroma-db-adapted.md), which covers collections, filters, `space`, HNSW's `ef_search`, `ef_construction` and `max_neighbors`, and the "polar bear" mix-up with the polars library.
+
+**Descent check.** Why is Chroma's number for Fast Cars 0.009 and not 0.991? *Chroma returns a cosine **distance** (one minus the similarity). Close films have small distances.*
+
+---
+
 ## Go-around: common mistakes
 
 If a landing goes wrong, pull up and check:
@@ -371,6 +458,9 @@ If a landing goes wrong, pull up and check:
 | Cosine scores all slightly above 1 | 100 ft | vectors not normalised, or rounding; normalise and check lengths |
 | Shape error when dividing by lengths | 100 ft | use `keepdims=True` (or `reshape(-1, 1)`) so rows divide by their own length |
 | Vector database "forgets" after a restart | 10,000 ft | you built a library, not a database: add persistence |
+| Chroma data gone after a restart | Taxi | `chromadb.Client()` is memory only: use `PersistentClient(path=...)` |
+| Chroma number looks "upside down" | Taxi | it reports a distance (smaller is closer), not a similarity |
+| "polar bear" finds the polars library | Taxi | a semantic mix-up: add a metadata or document filter |
 
 ## Cockpit card
 
@@ -383,6 +473,7 @@ If a landing goes wrong, pull up and check:
 | 1,000 | L2 8.08, dot 86, cosine 0.767 for `[4, 8]` and `[11.5, 5]` |
 | 100 | `np.sqrt(np.sum((a-b)**2))`, `np.sum(a*b)`, `dot / (norm * norm)`, `rows @ q` |
 | Touchdown | normalise, score every row with `@`, sort descending |
+| Taxi | `create_collection(... "space": "cosine")`, `add`, `query`; smaller distance is closer; HNSW is the index |
 
 ## Practice flights
 
@@ -395,6 +486,8 @@ No answers shown. Ask me for a hint.
 5. **1,000 ft:** compute L2, dot and cosine for `q = [1, 2, 3]` and `r = [4, 5, 6]` by hand.
 6. **100 ft:** add a `metric` argument to `search` that switches between cosine and L2.
 7. **Touchdown:** add a sixth movie, `"Thriller": [7, 3]`, and find where it ranks for `[8, 2]`.
+8. **Taxi:** add the same movie to the Chroma collection and compare its distance with `1 - ` your similarity.
+9. **Taxi:** rebuild the collection with `"space": "l2"` and explain why the numbers are bigger but the order is the same.
 
 ---
 

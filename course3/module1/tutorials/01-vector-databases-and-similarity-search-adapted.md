@@ -597,4 +597,4 @@ No answers shown. Ask me for a hint.
 
 ---
 
-Next: [Tutorial 2, build a mini vector database](02-build-a-mini-vector-database.md).
+Next: [Tutorial 2, build a mini vector database](02-build-a-mini-vector-database.md), then [Tutorial 4, Chroma DB](04-chroma-db-adapted.md).

@@ -1,8 +1,8 @@
-# Module 1: Introduction to Vector Databases and Similarity Search
+# Module 1: Introduction to Vector Databases and Chroma DB
 
-A plain-language, cleaned-up version of the module's videos and readings: what vector databases are, how they differ from relational databases, where they are used, and how similarity search measures "alike".
+A plain-language, cleaned-up version of the module's videos and readings: what vector databases are, how they differ from relational databases, where they are used, how similarity search measures "alike", and how **Chroma DB** puts it into practice (collections, filtering, the HNSW index).
 
-**How to use this guide:** read top to bottom once, then use the [Cheat Sheet](#13-cheat-sheet) and [Self-Quiz](#14-self-quiz) for revision.
+**How to use this guide:** read top to bottom once, then use the [Cheat Sheet](#18-cheat-sheet) and [Self-Quiz](#19-self-quiz) for revision.
 
 ## Contents
 
@@ -18,8 +18,13 @@ A plain-language, cleaned-up version of the module's videos and readings: what v
 10. [Dot product](#10-dot-product)
 11. [Cosine similarity and distance](#11-cosine-similarity-and-distance)
 12. [Choosing a metric](#12-choosing-a-metric)
-13. [Cheat Sheet](#13-cheat-sheet)
-14. [Self-Quiz](#14-self-quiz)
+13. [Chroma DB: key concepts and architecture](#13-chroma-db-key-concepts-and-architecture)
+14. [Filtering in Chroma DB](#14-filtering-in-chroma-db)
+15. [Vector indexes and HNSW](#15-vector-indexes-and-hnsw)
+16. [Similarity search in Chroma DB](#16-similarity-search-in-chroma-db)
+17. [Chroma quick reference and best practices](#17-chroma-quick-reference-and-best-practices)
+18. [Cheat Sheet](#18-cheat-sheet)
+19. [Self-Quiz](#19-self-quiz)
 
 ---
 
@@ -29,7 +34,8 @@ Type-along versions with code, diagrams and exercises:
 
 - [Tutorial 1: vector databases and similarity search, adapted](tutorials/01-vector-databases-and-similarity-search-adapted.md) follows the videos, the reading and the lab *Similarity Search by Hand* in order, with OpenAI embeddings instead of `sentence-transformers`.
 - [Tutorial 2: build a mini vector database](tutorials/02-build-a-mini-vector-database.md) grows one small database over `transcript.md`: search, real embeddings, metric choice, metadata filters, update and delete, saving to disk.
-- [Tutorial 3: flight plan, 30,000 ft to touchdown](tutorials/03-flight-plan-30000-ft-to-touchdown.md) tells the same module at six levels of abstraction, from the one-sentence idea down to the NumPy lines, and ends with a search you run by hand. No API key needed.
+- [Tutorial 3: flight plan, 30,000 ft to touchdown](tutorials/03-flight-plan-30000-ft-to-touchdown.md) tells the same module at seven levels of abstraction, from the one-sentence idea down to the NumPy lines, lands with a search you run by hand, then repeats that search in Chroma. No API key needed.
+- [Tutorial 4: Chroma DB, adapted](tutorials/04-chroma-db-adapted.md) follows the Chroma lesson: collections, CRUD, metadata and document filters, the HNSW settings and the "polar bear" fix. It runs locally with Chroma's built-in embedding model, so no API key is needed.
 
 Source material in this folder: [transcript.md](transcript.md) (raw video transcripts and readings) and the lab notebook `Similarity search by hand-v1.ipynb`. Setup for the examples is in [course2 module 1](../../course2-build-rag-agents-get-started/module1/README.md#run-the-examples-yourself).
 
@@ -44,10 +50,16 @@ flowchart LR
     C --> D["Applications"]
     D --> E["Similarity search"]
     E --> F["L2, dot, cosine"]
-    F --> G["Next module: Chroma DB"]
+    F --> G["Chroma DB"]
+    G --> H["Collections and CRUD"]
+    G --> I["Filtering"]
+    G --> J["HNSW index"]
+    H --> K["Similarity search"]
+    I --> K
+    J --> K
 ```
 
-This module is lesson 1 of *Vector Databases for RAG*. Lesson 2 (Chroma DB) and module 2 (database operations, recommenders, RAG) build on it.
+This module has two lessons of *Vector Databases for RAG*: lesson 1 (vector databases and similarity search, sections 1 to 12) and lesson 2 (exploring Chroma DB, sections 13 to 17). Module 2 (database operations, recommenders, RAG) builds on both.
 
 ---
 
@@ -138,7 +150,7 @@ flowchart TB
 |---|---|---|
 | Data representation | tables, rows, columns; structured data | multi-dimensional vectors; encodes complex, unstructured data (images, text, sensors) |
 | Search and retrieval | SQL queries | similarity search; image retrieval, recommendations, anomaly detection |
-| Indexing | B-trees | structures for high dimensions (metric trees, hashing) that speed up nearest-neighbour search |
+| Indexing | B-trees | structures for high dimensions (metric trees, hashing, graph-based HNSW) that speed up nearest-neighbour search |
 | Scalability | harder; add resources or shard data | built for big datasets; distributed architectures, horizontal scaling |
 | Typical applications | business and transaction systems | large-scale analysis: research, NLP, multimedia |
 
@@ -427,7 +439,351 @@ flowchart TD
 
 ---
 
-## 13. Cheat Sheet
+## 13. Chroma DB: key concepts and architecture
+
+**Chroma DB** is an open-source vector database built for retrieval tasks. It offers:
+
+| Capability | What it means |
+|---|---|
+| Embedding and metadata storage | stores vectors together with data about them |
+| Vector search | finds text by **semantic** similarity using a distance metric such as cosine distance |
+| Full text search | finds documents by **lexical** (spelling, exact word) similarity |
+| Document storage | keeps the whole document, not only its embedding |
+| Metadata filtering | narrows results using metadata to improve accuracy |
+| Multi-modal retrieval | text, images and audio managed in one place |
+
+### Deployment: two ways
+
+```mermaid
+flowchart LR
+    subgraph CS["Client-server"]
+        C1["Chroma client"] -->|"HTTP"| S1["Chroma server, separate process"]
+    end
+    subgraph SA["Standalone, Python only"]
+        C2["Client and server in one process"]
+    end
+```
+
+- **Client-server** (the typical setup). A client talks to a server in another process over HTTP. Start the server from the Chroma command line or from a Docker image.
+- **Standalone** (Python). Client and server run inside your own program. Good for quick tests, or when the server will always be on the same machine.
+
+### Architecture: five phases
+
+```mermaid
+flowchart LR
+    P1["1 Get embeddings, optional"] --> P2["2 Create a collection"]
+    P2 --> P3["3 Add data"]
+    P3 --> P4["4 Collection operations"]
+    P4 --> P5["5 Query and filter"]
+```
+
+1. **Obtain embeddings (optional).** Convert text, images or data to vectors with an embedding model. Optional, because Chroma can do it for you.
+2. **Create a collection.** A collection is Chroma's **table**: all data lives in collections, each with a logical name.
+3. **Add data.** Send documents, metadata and ids. If you made embeddings yourself, send them too. Otherwise Chroma computes and stores them in the background.
+4. **Collection operations.** Delete, update or rename collections.
+5. **Query.** Search by text or by vector. Filter on metadata and on document content. Chroma embeds your query text for you.
+
+**Default metric.** Chroma uses **squared Euclidean (L2) distance** unless you choose otherwise. It also supports cosine distance and the dot product (see [section 15](#15-vector-indexes-and-hnsw)).
+
+### Clients and integrations
+
+- Official clients: **Python** and **JavaScript**, maintained by the Chroma core team.
+- Community clients: Ruby, Java, Go, C#, Rust, PHP.
+- Integrates with **LangChain**, **LlamaIndex** and **Ollama**, and has native embedding integrations for **Hugging Face**, **Google** and **OpenAI** models.
+- The core is written in **Rust**, which the video says gives roughly 3 to 5 times faster queries and writes than a Python core.
+
+### Typical uses
+
+Personalised **recommenders**, document **search** (vector or full text), **image retrieval** from text queries (multi-modal), and **chatbots** that fetch context for an LLM.
+
+### How the pieces map to what you already know
+
+| Chroma | Earlier idea |
+|---|---|
+| collection | table (but of vectors) |
+| `add` / `get` / `update` / `delete` | CRUD (what separates a database from a library) |
+| `where` | metadata filter (Tutorial 2, step 4) |
+| HNSW index | the "approximate nearest neighbour" speed-up |
+
+---
+
+## 14. Filtering in Chroma DB
+
+Chroma filtering differs from SQL. SQL matches **exact** values in a fixed schema. Chroma is built for unstructured data, so filters can be **combined with similarity search**.
+
+```mermaid
+flowchart TD
+    F["Filtering"] --> M["Metadata filter: where"]
+    F --> D["Document filter: where_document"]
+    M --> MM["Like SQL WHERE, plus vector search"]
+    D --> DD["Like CONTAINS or LIKE, also called full text search"]
+```
+
+| Filter | Parameter | Compare to SQL |
+|---|---|---|
+| **Metadata** | `where` | `WHERE` clause, but can be combined with vector search |
+| **Document** | `where_document` | `CONTAINS` or `LIKE`, but integrated with vector search |
+
+Both go inside `.query()`, `.get()` and `.delete()`.
+
+### Metadata filter operators
+
+| Operator | Meaning | Types |
+|---|---|---|
+| `$eq` | equal to | string, int, float |
+| `$ne` | not equal to | string, int, float |
+| `$gt` / `$gte` | greater than / or equal | int, float |
+| `$lt` / `$lte` | less than / or equal | int, float |
+| `$in` | value is in a list | list |
+| `$nin` | value is **not** in a list | list |
+| `$and` / `$or` | combine filters | list of filters |
+
+No operator means `$eq`, so these are the same:
+
+```python
+where={"source": "langchain.com"}
+where={"source": {"$eq": "langchain.com"}}
+```
+
+Combine with `$and` or `$or`:
+
+```python
+where={"$and": [
+    {"source": {"$in": ["langchain.com", "llamaindex.ai"]}},
+    {"version": {"$lt": 0.3}},
+]}
+```
+
+### Document filter operators
+
+```python
+where_document={"$contains": "pandas"}
+where_document={"$not_contains": "library"}
+where_document={"$or": [{"$contains": "LangChain"}, {"$contains": "Python"}]}
+```
+
+Document filtering is **case-sensitive**: searching for "Pandas" does not find "pandas".
+
+### The reading's worked example
+
+Five documents: ids `id1` to `id5`, each with `source` and `version` metadata.
+
+| id | Document | source | version |
+|---|---|---|---|
+| id1 | This is a document about LangChain | langchain.com | 0.1 |
+| id2 | This is a reading about LlamaIndex | llamaindex.ai | 0.2 |
+| id3 | This is a book about Python | python.org | 0.3 |
+| id4 | This is a document about pandas | pandas.pydata.org | 0.4 |
+| id5 | This is another document about LangChain | langchain.com | 0.5 |
+
+| Filter | Result |
+|---|---|
+| source equals langchain.com | id1, id5 |
+| source equals langchain.com **and** version below 0.3 | id1 |
+| source in (langchain.com, llamaindex.ai) **and** version below 0.3 | id1, id2 |
+| document contains "pandas" | id4 |
+| document contains "Pandas" | nothing (case) |
+| version above 0.1 **and** document contains "LangChain" or "Python" | id3, id5 |
+
+---
+
+## 15. Vector indexes and HNSW
+
+### Why an index?
+
+Finding the most similar vector is easy maths: normalise everything, take dot products, sort. But this **brute-force** approach compares the query with **every** vector, which is too slow at scale.
+
+A **vector index** is a data structure that organises the embeddings so a search only looks at a small, promising subset. Similar vectors are clustered or linked, so large parts of the data can be skipped early. This is how databases scale to millions or billions of vectors with low delay.
+
+### HNSW: Hierarchical Navigable Small World
+
+HNSW is a graph-based index for **approximate nearest neighbour (ANN)** search. It is the **only** index method the course says Chroma supports. It builds a **multi-layered graph**:
+
+- the **upper layers** hold a sparse overview of the data, for fast moves across the space
+- the **bottom layer** holds all the vectors, for the detailed search
+- each vector links to a few near neighbours, forming a "small world" in which any vector is a few hops away
+
+```mermaid
+flowchart TD
+    L2["Top layer: few points, long jumps"] --> L1["Middle layer: more points, shorter jumps"]
+    L1 --> L0["Bottom layer: all points, fine search"]
+    L0 --> R["Nearest neighbours found"]
+```
+
+**Search.** Start at the top layer, move towards the query, drop down a layer, refine, repeat. Most of the data is never touched.
+
+Think of finding a house: first the country, then the city, then the street, then the door.
+
+| Benefit | Meaning |
+|---|---|
+| Fast | avoids scanning the data |
+| Accurate | near-exact results |
+| Scalable | millions to billions of vectors |
+| Versatile | works with several metrics |
+
+"Approximate" means it may occasionally miss the true nearest vector in exchange for speed.
+
+### Configuring HNSW
+
+HNSW is configured **when the collection is created**:
+
+```python
+collection = client.create_collection(
+    name="my_collection_name",
+    metadata={"topic": "query testing"},
+    configuration={
+        "hnsw": {
+            "space": "cosine",
+            "ef_search": 100,
+            "ef_construction": 100,
+            "max_neighbors": 16,
+        },
+        "embedding_function": ef,
+    },
+)
+```
+
+| Parameter | What it controls | Default | Higher value |
+|---|---|---|---|
+| `space` | distance metric: `l2` (squared L2), `ip` (inner product), `cosine` | `l2` | not a quality knob |
+| `ef_search` | size of the candidate list when **searching** | 100 | better accuracy and recall, slower search |
+| `ef_construction` | size of the candidate list when **building** the index | 100 | better index quality, slower build, more memory |
+| `max_neighbors` | max connections per node | 16 | denser graph, better search, more memory and build time |
+
+Two groups: `ef_search` is the **query-time** lever (recall versus speed). `ef_construction` and `max_neighbors` set the **quality of the built index** and cost memory and build time.
+
+```mermaid
+flowchart LR
+    Q["Query time"] --> ES["ef_search"]
+    B["Build time"] --> EC["ef_construction"]
+    B --> MN["max_neighbors"]
+    ES --> T1["Accuracy versus speed"]
+    EC --> T2["Index quality versus build cost"]
+    MN --> T2
+```
+
+---
+
+## 16. Similarity search in Chroma DB
+
+### Add data, then query
+
+The reading uses four documents that all contain the word "pandas", but with two meanings: the animal (`id1`, `id3`) and the Python library (`id2`, `id4`).
+
+| id | Document | topic |
+|---|---|---|
+| id1 | Giant pandas are a bear species that lives in mountainous areas. | animals |
+| id2 | A pandas DataFrame stores two-dimensional, tabular data | data analysis |
+| id3 | I think everyone agrees that pandas are some of the cutest animals on the planet | animals |
+| id4 | A direct comparison between pandas and polars indicates that polars is a more efficient library than pandas. | data analysis |
+
+```python
+collection.query(query_texts=["cats"], n_results=10)
+```
+
+Pass the query **in a list** to `query_texts`. `n_results` is how many to return; asking for more than exist returns all, ranked best first.
+
+Result for "cats" (cosine distances, smaller is closer):
+
+| Rank | id | Distance | Why |
+|---|---|---|---|
+| 1 | id3 | 0.738 | animals, and "cutest" matches cats being cute |
+| 2 | id1 | 0.835 | animals |
+| 3 | id2 | 0.863 | library |
+| 4 | id4 | 0.930 | library |
+
+The animal documents win although the query contains no word from them, because the **meaning** is closer.
+
+### When semantic search goes wrong, and the fix
+
+Query `"polar bear"` with `n_results=1` returns `id4`, the document about **polars** (the library), at distance 0.624. The embedding matched the word "polar" with "polars". Semantic search is not magic.
+
+Three ways to fix it:
+
+1. add more context to the query
+2. use a different embedding model
+3. **filter** (the simplest and often best)
+
+```python
+# keep only animal documents
+collection.query(query_texts=["polar bear"], n_results=1, where={"topic": "animals"})
+
+# or: drop anything that mentions "library"
+collection.query(query_texts=["polar bear"], n_results=1,
+                 where_document={"$not_contains": "library"})
+
+# or: both together
+collection.query(query_texts=["polar bear"], n_results=1,
+                 where={"topic": "animals"},
+                 where_document={"$not_contains": "library"})
+```
+
+All three return `id1` (the bears), at distance 0.710.
+
+```mermaid
+flowchart LR
+    Q["polar bear"] --> S1["Search everything"] --> W["Matches polars: wrong"]
+    Q --> F["Filter first: topic is animals"] --> S2["Search the rest"] --> OK["Giant pandas: right"]
+```
+
+### Reading a query result
+
+`query` returns lists **of lists**, one inner list per query text:
+
+```python
+{'ids': [['id3', 'id1', 'id2', 'id4']],
+ 'documents': [[...]],
+ 'metadatas': [[...]],
+ 'distances': [[0.738, 0.835, 0.863, 0.930]]}
+```
+
+The standard loop from the cheat sheet:
+
+```python
+for i, (doc_id, score, text) in enumerate(
+        zip(results['ids'][0], results['distances'][0], results['documents'][0])):
+    print(f"Rank {i+1}: {doc_id}, Score: {score:.4f}, Text: {text}")
+```
+
+`[0]` selects the results for the first (only) query.
+
+---
+
+## 17. Chroma quick reference and best practices
+
+```python
+# 1. Setup
+import chromadb
+from chromadb.utils import embedding_functions
+ef = embedding_functions.SentenceTransformerEmbeddingFunction(model_name="all-MiniLM-L6-v2")
+client = chromadb.Client()
+
+# 2. Collection with HNSW settings
+collection = client.create_collection(
+    name="collection_name",
+    configuration={"hnsw": {"space": "cosine"}, "embedding_function": ef},
+)
+
+# 3. Add, 4. get, 5. query
+collection.add(documents=texts, metadatas=metadata, ids=ids)
+everything = collection.get()
+only_one_source = collection.get(where={"source": "source1"})
+results = collection.query(query_texts=["query"], n_results=5)
+```
+
+(The course uses `SentenceTransformerEmbeddingFunction`. [Tutorial 4](tutorials/04-chroma-db-adapted.md) uses Chroma's built-in `DefaultEmbeddingFunction`, which is the same `all-MiniLM-L6-v2` model, so you do not need PyTorch.)
+
+**Best practices**
+- Document filtering is **case-sensitive**.
+- Combine `where` and `where_document` for precise results.
+- Use `$and` and `$or` for complex logic, `$in` and `$nin` for lists.
+- Pick the metric with `space` when you create the collection. Use `cosine` for text.
+- Raise `ef_search` if recall is poor and you can afford slower queries.
+- When a semantic match is wrong, add a filter before changing the model.
+
+---
+
+## 18. Cheat Sheet
 
 | Idea | Remember |
 |---|---|
@@ -449,7 +805,25 @@ flowchart TD
 
 Key numbers to recall: for `a = [4, 8]`, `b = [11.5, 5]`: L2 ≈ 8.08, dot = 86, cosine ≈ 0.767.
 
-## 14. Self-Quiz
+| Chroma task | Code |
+|---|---|
+| Create a collection with settings | `client.create_collection(name=..., configuration={"hnsw": {"space": "cosine"}, "embedding_function": ef})` |
+| Add | `collection.add(documents=..., metadatas=..., ids=...)` |
+| Fetch by filter | `collection.get(where={...}, where_document={...})` |
+| Similarity search | `collection.query(query_texts=[...], n_results=k, where=..., where_document=...)` |
+| Metric (`space`) | `l2` (default, squared), `ip`, `cosine` |
+| Metadata operators | `$eq $ne $gt $gte $lt $lte $in $nin $and $or` |
+| Document operators | `$contains $not_contains $and $or` (case-sensitive) |
+| HNSW knobs | `ef_search` (query), `ef_construction`, `max_neighbors` (build) |
+
+| Idea | Remember |
+|---|---|
+| Collection | Chroma's table of vectors |
+| Vector index | structure that avoids comparing the query with every vector |
+| HNSW | layered graph: sparse top for jumps, full bottom for detail; approximate |
+| Filter before you tune | a `where` often fixes a wrong semantic match |
+
+## 19. Self-Quiz
 
 1. How does a vector database store data, and how does a relational database store it?
 2. What does a vector library lack compared with a vector database?
@@ -461,6 +835,13 @@ Key numbers to recall: for `a = [4, 8]`, `b = [11.5, 5]`: L2 ≈ 8.08, dot = 86,
 8. Why does normalising vectors turn cosine similarity into a dot product?
 9. Which metric would you pick for text embeddings, and why?
 10. What happens to L2 distance in very high dimensions?
+11. What is a collection in Chroma, and what does Chroma do for you when you `add` documents?
+12. What are the two ways to deploy Chroma, and when is standalone mode useful?
+13. What is the difference between `where` and `where_document`?
+14. Why does `where_document={"$contains": "Pandas"}` find nothing in a collection that contains "pandas"?
+15. Why does a vector index exist, and what does "approximate" mean in HNSW?
+16. Which HNSW setting do you raise to improve recall at query time? Which two affect the quality of the built index?
+17. The query "polar bear" returns a document about the Python library polars. Give two fixes.
 
 <details>
 <summary>Answers</summary>
@@ -475,8 +856,27 @@ Key numbers to recall: for `a = [4, 8]`, `b = [11.5, 5]`: L2 ≈ 8.08, dot = 86,
 8. Both lengths become 1, so the denominator `|a||b|` is 1 and only `a . b` remains.
 9. Cosine, because meaning lives in direction and documents differ in length; it also behaves well in high dimensions.
 10. It suffers from the curse of dimensionality: points look about equally far apart, so distances stop being useful.
+11. A collection is Chroma's table. On `add` it stores the documents and metadata, and, unless you pass embeddings, computes and stores the embeddings in the background.
+12. Client-server (a client talks to a server over HTTP) and standalone (client and server in one Python process). Standalone suits quick tests or a server that is always on the same machine.
+13. `where` filters on metadata. `where_document` filters on the document text (full text search). Both can be combined with the vector search.
+14. Document filtering is case-sensitive.
+15. Brute force compares the query with every vector, which is slow at scale; an index lets the search look at a small subset. Approximate means it can occasionally miss the true nearest neighbour in exchange for speed.
+16. `ef_search` at query time. `ef_construction` and `max_neighbors` set the quality of the built index.
+17. Add a metadata filter such as `where={"topic": "animals"}` or a document filter such as `$not_contains: "library"`; or add context to the query, or use a different embedding model.
 
 </details>
+
+### The course's own quiz, with answers
+
+| # | Question (short) | Answer |
+|---|---|---|
+| 1 | How do vector databases enhance recommendation systems? | by enabling efficient **similarity searches** for complex data types |
+| 2 | Key difference from traditional databases? | vector databases are designed to handle **embeddings** |
+| 3 | In-memory versus other types? | they store vectors directly in memory, which can give **faster query responses** |
+| 4 | Which metric uses direction, not magnitude? | **cosine** distance |
+| 5 | What does the direction of an embedding represent? | the **topic or semantic meaning** |
+| 6 | Indexing versus querying in Chroma? | indexing **organises data for efficient retrieval**; querying retrieves by semantic similarity |
+| 7 | Role of embeddings in similarity search? | they **convert data into a format that enables similarity comparison** |
 
 ---
 
@@ -494,5 +894,12 @@ The raw `transcript.md` is a copy of the course page, with speech-to-text slips 
 | "Vector libraries within in-memory vector databases." | garbled sentence; the point is that libraries are in-memory indexes without full CRUD |
 | Science fiction coded `3`, then the sci-fi books coded `1` | an inconsistency in the video; the example only needs the numbers to be comparable |
 | "BAI framework" (certificate overview) | most likely the **BeeAI** framework (not certain) |
+| "computatuonal", "defualt" (HNSW reading) | computational, default |
+| "OLlama" | Ollama |
+| the cats-query explanation appears twice, in two wordings | kept once |
+| the cheat sheet lists `$in` and `$nin` among comparison operators | they are list operators (membership); section 14 lists them as such |
+| "HNSW is the sole indexing method supported by Chroma" | true of the course version. Newer Chroma versions also have a distributed index (SPANN) in their configuration, but HNSW is what you use locally |
+| Setup code uses `SentenceTransformerEmbeddingFunction` | needs PyTorch. Chroma's built-in `DefaultEmbeddingFunction` is the same `all-MiniLM-L6-v2` model, used in Tutorial 4 |
+| the page's "Copied!", "Wrap Toggled!" and line-number columns in code | page interface text, removed |
 
 Left out as filler: the course welcome and objectives, the certificate overview, and the "in this video you learned" recaps (their content is in the sections above).
