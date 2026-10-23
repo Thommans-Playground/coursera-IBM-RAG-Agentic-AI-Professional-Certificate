@@ -37,7 +37,9 @@ Type-along versions with code, diagrams and exercises:
 - [Tutorial 3: flight plan, 30,000 ft to touchdown](tutorials/03-flight-plan-30000-ft-to-touchdown.md) tells the same module at seven levels of abstraction, from the one-sentence idea down to the NumPy lines, lands with a search you run by hand, then repeats that search in Chroma. No API key needed.
 - [Tutorial 4: Chroma DB, adapted](tutorials/04-chroma-db-adapted.md) follows the Chroma lesson: collections, CRUD, metadata and document filters, the HNSW settings and the "polar bear" fix. It runs locally with Chroma's built-in embedding model, so no API key is needed.
 
-Source material in this folder: [transcript.md](transcript.md) (raw video transcripts and readings) and the lab notebook `Similarity search by hand-v1.ipynb`. Setup for the examples is in [course2 module 1](../../course2-build-rag-agents-get-started/module1/README.md#run-the-examples-yourself).
+- [Tutorial 5: the Chroma lab, adapted](tutorials/05-lab-similarity-search-on-groceries-adapted.md) walks through the lab *Similarity Search on Text Using a Chroma Vector Database* task by task (grocery list, `apple` query), flags where the lab's "score" is really a distance, and leaves the multi-query exercises as practice.
+
+Source material in this folder: [transcript.md](transcript.md) (raw video transcripts and readings), the lab notebook `Similarity search by hand-v1.ipynb`, and [lab-instructions.md](lab-instructions.md) (the Chroma lab). Setup for the examples is in [course2 module 1](../../course2-build-rag-agents-get-started/module1/README.md#run-the-examples-yourself).
 
 ---
 

@@ -649,4 +649,4 @@ No answers shown. Ask me for a hint.
 
 ---
 
-Previous: [Tutorial 3, the flight plan](03-flight-plan-30000-ft-to-touchdown.md). Same ideas from the top: [module README](../README.md).
+Next: [Tutorial 5, the Chroma lab](05-lab-similarity-search-on-groceries-adapted.md). Previous: [Tutorial 3, the flight plan](03-flight-plan-30000-ft-to-touchdown.md). Same ideas from the top: [module README](../README.md).
