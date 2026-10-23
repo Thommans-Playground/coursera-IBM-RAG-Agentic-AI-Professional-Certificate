@@ -347,3 +347,1075 @@ Dot product can be computed efficiently using matrix operations, and can be used
 Conclusion
 Choosing the right distance metric is crucial for effective similarity search. L2 distance works well for continuous, lower-dimensional data where magnitude matters. Cosine distance excels with high-dimensional, sparse data where direction is more important than magnitude. Dot product offers computational efficiency and is useful when both magnitude and direction contribute to similarity. Understanding these trade-offs helps in selecting the most appropriate metric for your specific use case.
 
+Exploring Chroma DB 
+Chroma DB Key Concepts and Architecture 
+​Welcome to this video, Chroma DB Key Concepts and Architecture. ​After watching this video, you'll be able to ​Understand the core features and capabilities of Chroma DB, ​Understand the different deployment options of Chroma DB, ​Explain the architecture and workflow of Chroma DB, ​And understand data operations that can be performed by Chroma DB. ​Chroma DB is a vector database specifically designed to support various retrieval tasks. ​It offers the following capabilities. ​Storage of embeddings and their metadata to efficiently store and manage vector representations ​of data. ​Vector search compares vector embeddings to find text based on semantic similarity using ​distance metrics such as cosine distance. ​Full text search to find relevant documents based on lexical or spelling similarity. 
+​Data storage to store entire documents, not just their embeddings. ​Metadata filtering can be used to narrow down search results based on metadata to improve ​the accuracy of the data retrieval process. ​And lastly, multi-modal retrieval to retrieve and manage multi-modal data such as images, ​audio and text in a unified manner. ​Chroma DB can be deployed in one of two ways. ​Chroma DB typically operates using a client-server architecture, where the Chroma client connects ​to a Chroma server running in a separate process. ​The server can be launched either via the Chroma command-line interface, including the ​core Chroma package, or by using a Docker image. ​The clients, whether local or remote, connect to the server using the HTTP protocol. 
+​For Python, Chroma can run in a standalone mode instead of the typical client-server ​setup. ​In standalone mode, both the server and client functionalities are run within a single process. ​This mode is useful for quickly testing Chroma's features or when the server is expected to ​always run on the same machine as the client. ​Let's take a brief look at Chroma's vector database architecture. ​The Chroma vector database architecture works in multiple phases. ​During the first phase, which is optional, you'll obtain embeddings. ​During this phase, you'll convert text, images, or data into their vector representations ​using an embedding model. 
+​This step is optional because you can offload the embedding step to Chroma DB if you want. ​In the next phase, you'll create collections. ​Similar to tables in a relational database, Chroma DB uses collections to store all of ​its data. ​The next phase is where you store data within the collections. ​If you created embeddings outside of Chroma DB, you would have to pass the embeddings to Chroma DB ​at this step. ​Otherwise, if you allow Chroma DB to handle embedding, then Chroma DB will calculate and ​store the embeddings from the documents in the background. ​Next comes the phase where you perform collection operations. 
+​Chroma DB lets you perform various database operations including deleting, updating, or ​renaming your collections, giving you more options for organizing your data. ​In the final phase, you query and group data for the most useful information. ​Chroma DB lets users use text or vector queries to find information in groups based on semantic ​meaning or textual similarity. ​Moreover, Chroma DB allows users to filter documents on their metadata and document contents. ​Chroma DB supports multiple clients and integrations. ​The officially supported clients for Chroma DB are Python and JavaScript, and these are maintained ​by the ChromaCore team. ​There are also several unofficial community-supported clients for Chroma DB, including Ruby, Java, ​Go, C#, Rust, and PHP. 
+​For more information on these clients and their supported features, visit the Chroma ​Ecosystem Clients page in the Chroma Cookbook at the URL displayed here. ​Chroma DB can also be integrated with popular frameworks and tools such as LangChain, LlamaIndex ​and OLlama. ​And it provides native integration with embedding models from Hugging Face, Google, and OpenAI. ​Let's take a high-level look at an example of a typical Chroma DB workflow. ​The first step is to create a collection, which involves giving it a logical name. ​The next step is to add chunks of text and associated metadata to the collection. ​When you do this, Chroma DB automatically stores the text and handles the embedding process. 
+​Alternatively, if you precomputed the embeddings before this step, you would supply those embeddings ​here along with the text. ​Lastly, you query the collection, and Chroma DB returns a list of the most similar results. ​Again, Chroma DB handles the embedding of your query automatically, so you don't need to ​embed the query text before running your query. ​By default, Chroma uses Euclidean distance to identify the most similar chunks within ​a collection. ​It also supports cosine distance and dot product calculation. ​Let's take a quick look at the performance features of Chroma DB. ​Chroma DB offers efficient similarity search capabilities, as it is optimized for approximate ​nearest neighbor search, allowing users to find similar vectors quickly. 
+​Internally, Chroma uses an advanced algorithm called the Hierarchical Navigable Small World ​or HNSW for short, for efficiently finding the approximate nearest neighbor according ​to the chosen distance metric. ​Chroma DB also offers good coding practices. ​The core of Chroma DB was written in Rust, which allows for 3 to 5 times speed improvements ​in querying and writing operations when compared to a core written in Python. ​Some of the most common use cases and applications for Chroma DB include the following. ​Building personalized recommender systems based on user preferences, implementing efficient ​document search engines using vector or full-text search capabilities, retrieving images based ​on text queries using multi-modal retrieval, and providing chatbots with semantic search ​and retrieval capabilities for context augmentation. ​In this video, you learned that ​Chroma DB is a powerful vector database designed for various retrieval tasks. ​Chroma DB supports multi-modal retrieval, metadata filtering, vector search, and full-text search. 
+​Deploying Chroma DB can be done using client-server architecture or standalone mode. ​Chroma DB integrates with popular frameworks and supports multiple programming languages. ​Chroma DB uses an advanced algorithm for approximate nearest neighbor search, which efficiently ​finds the approximately closest chunks to a query within a collection. ​And Chroma DB is suitable for a wide range of applications, including recommender systems, ​document search, image retrieval, and AI-based chatbots. 
+Chroma DB Filtering
+
+Estimated Reading Time: 15 minutes
+Filtering in Chroma DB fundamentally differs from traditional SQL-based filtering due to its emphasis on vector similarity and flexible metadata querying. While SQL databases rely on structured schemas and declarative logic to retrieve exact matches, Chroma DB is designed for unstructured data and semantic search, making it well-suited for AI-driven applications.
+Chroma DB supports two primary types of filtering:
+Filter Type
+Description
+Comparison to SQL
+Metadata Filtering
+Filters based on document metadata, such as "topic": "history" or "date": "2023-01-15".
+Similar to SQL WHERE clauses, but more flexible and can be combined with vector search.
+Document Filtering
+Filters based on document content using keyword presence (e.g., $contains, $not_contains).
+Comparable to SQL's CONTAINS or LIKE operators, but more powerful when integrated with vector search.
+
+
+This dual-filtering approach allows Chroma DB to support complex, context-aware queries that go beyond the capabilities of traditional relational databases.
+💡 Document filtering in Chroma DB is also referred to as full text search.
+
+🏷️ Metadata Filtering in Chroma DB
+Metadata filtering in Chroma DB can be performed by using the where parameter inside the .query(), .get(), or .delete() methods.
+For basic metadata matches, where you want to find only equivalent matches, use the following syntax:
+1
+   where={"key": "value"}
+
+For instance, the following code will get only those documents within collection where the metadata key is exactly equal to value :
+1
+2
+3
+collection.get(
+   where={"key": "value"}
+)
+ 
+Similar syntax can be used within .query() or .delete() methods.
+For defining even more complex filters, Chroma DB supports the following metadata filtering operators:
+$eq - equal to (string, int, float)
+$ne - not equal to (string, int, float)
+$gt - greater than (int, float)
+$gte - greater than or equal to (int, float)
+$lt - less than (int, float)
+$lte - less than or equal to (int, float)
+These operators can be applied using the following syntax, using $eq as an example:
+1
+   where={"key": {"$eq": "value"}}
+
+Note that the above is identical to the following:
+1
+   where={"key": "value"}
+In other words, not providing an operator is equivalent to using the $eq operator.
+Combining different filters can be achieved using the $and and $or logical operators as follows:
+
+
+collection.get(
+   where={
+       "$and": [
+           {"key": {"$eq": "value1"}},
+           {"key": {"$ne": "value2"}}
+       ]
+   }
+)
+    
+The above would get only the documents where key is equal to value1 and key is not equal to value2 from collection. Similar syntax can be used for $or as well as the .query() and .delete() methods.
+Finally, to use lists in filters, use the $in and $nin operators, where we note that $nin stands for "not in":
+1
+   where={"key": {"$nin":["value1", "value2"]}}
+The above code will find all documents where key is not equal to either value1 or value2.
+
+📝 Document Filtering in Chroma DB
+Document filtering in Chroma DB can be performed by supplying $contains or $not_contains to the where_document parameter inside the .query(), .get(), or .delete() methods using the following syntax:
+1
+   where_document={"$contains":"value"}
+The above would find all documents that contain value in the text of the document.
+Moreover, note that you can combine multiple document filters using the $and and $or document operators in an analogous way to the metadata filters.
+A full example of metadata and document filtering in Chroma DB
+The following presents a full example of metadata and document filtering in Chroma DB.
+🔧 Setup
+The following commands import chromadb and its embedding utilities, then create an embedding function object used to generate vector embeddings:
+import chromadb
+from chromadb.utils import embedding_functions
+
+
+ef = embedding_functions.SentenceTransformerEmbeddingFunction(
+   model_name="all-MiniLM-L6-v2"
+)
+
+📂 Creating Collections
+Collections help organize your data in Chroma DB.
+🏗️ Create a Collection
+client = chromadb.Client()
+collection = client.create_collection(
+   name="filter_demo",
+   metadata={"description": "Used to demo filtering in ChromaDB"},
+   configuration={
+       "embedding_function": ef
+   }
+)
+print(f"Collection created: {collection.name}")
+  
+Output:
+1
+Collection created: filter_demo
+➕ Adding Documents to Collections
+Use add to insert documents with optional metadata.
+collection.add(
+   documents=[
+       "This is a document about LangChain",
+       "This is a reading about LlamaIndex",
+       "This is a book about Python",
+       "This is a document about pandas",
+       "This is another document about LangChain"
+   ],
+   metadatas=[
+       {"source": "langchain.com", "version": 0.1},
+       {"source": "llamaindex.ai", "version": 0.2},
+       {"source": "python.org", "version": 0.3},
+       {"source": "pandas.pydata.org", "version": 0.4},
+       {"source": "langchain.com", "version": 0.5},
+   ],
+   ids=["id1", "id2", "id3", "id4", "id5"]
+)
+       
+🏷️ Filter using Metadata
+The following finds all documents where the source is "langchain.com":
+1
+2
+3
+collection.get(
+   where={"source": {"$eq": "langchain.com"}}
+)
+  
+output:
+{'ids': ['id1', 'id5'],
+'embeddings': None,
+'documents': ['This is a document about LangChain',
+ 'This is another document about LangChain'],
+'uris': None,
+'included': ['metadatas', 'documents'],
+'data': None,
+'metadatas': [{'source': 'langchain.com', 'version': 0.1},
+ {'version': 0.5, 'source': 'langchain.com'}]}       
+The above produced correct output, but suppose we were only interested in LangChain documents with versions less than 0.3. The following finds all documents where the source is "langchain.com" with versions less than 0.3:
+collection.get(
+   where={
+       "$and": [
+           {"source": {"$eq": "langchain.com"}},
+           {"version": {"$lt": 0.3}}
+       ]
+   }
+)
+Output:
+{'ids': ['id1'],
+'embeddings': None,
+'documents': ['This is a document about LangChain'],
+'uris': None,
+'included': ['metadatas', 'documents'],
+'data': None,
+'metadatas': [{'source': 'langchain.com', 'version': 0.1}]}  
+Now, let's make an even more complicated filtering rule, one that combines logical operators with lists in filters. The following retrieves all documents about LangChain and LlamaIndex with a version less than 0.3:
+collection.get(
+   where={
+       "$and": [
+           {"source": {"$in": ["langchain.com", "llamaindex.ai"]}},
+           {"version": {"$lt": 0.3}}
+       ]
+   }
+)
+
+         
+Output:
+{'ids': ['id1', 'id2'],
+'embeddings': None,
+'documents': ['This is a document about LangChain',
+ 'This is a reading about LlamaIndex'],
+'uris': None,
+'included': ['metadatas', 'documents'],
+'data': None,
+'metadatas': [{'source': 'langchain.com', 'version': 0.1},
+ {'source': 'llamaindex.ai', 'version': 0.2}]}
+📝 Filter using Document Content
+Suppose we wanted to find documents that include the word "pandas" in the text. The following performs a full text search for such documents:
+1
+2
+3
+collection.get(
+   where_document={"$contains":"pandas"}
+)
+
+Output:
+{'ids': ['id4'],
+'embeddings': None,
+'documents': ['This is a document about pandas'],
+'uris': None,
+'included': ['metadatas', 'documents'],
+'data': None,
+'metadatas': [{'source': 'pandas.pydata.org', 'version': 0.4}]}
+
+💡 Document filtering is case-sensitive in Chroma DB. Therefore, searching for "Pandas" will not find any documents.
+🏷️ + 📝 Combine Metadata and Document Content Filters
+Of course, we can combine metadata and document filters. The following looks for all documents containing "LangChain" or "Python" with version numbers greater than 0.1:
+collection.get(
+   where={"version": {"$gt": 0.1}},
+   where_document={
+       "$or": [
+           {"$contains": "LangChain"},
+           {"$contains": "Python"}
+       ]
+   }
+)
+  
+Output:
+{'ids': ['id3', 'id5'],
+'embeddings': None,
+'documents': ['This is a book about Python',
+ 'This is another document about LangChain'],
+'uris': None,
+'included': ['metadatas', 'documents'],
+'data': None,
+'metadatas': [{'version': 0.3, 'source': 'python.org'},
+ {'source': 'langchain.com', 'version': 0.5}]}
+
+✅ Wrap-up
+In this reading, you explored how to implement Chroma DB's robust metadata and document filtering features to selectively include or exclude documents based on a predefined set of criteria. Metadata filtering allows you to target documents using structured attributes like tags, topics, or timestamps, while document filtering enables you to search within the content itself—either through keyword matching or semantic relevance. Together, these filtering techniques empower you to build more precise, context-aware queries that enhance the quality and relevance of your search results in AI-driven applications.
+Similarity Search and HNSW in Chroma DB
+What is a Vector Index?
+Finding the most semantically similar vectors to a query is mathematically straightforward. For example, to compute cosine similarity, you normalize the embeddings of all documents and the query, then calculate the dot product between the query embedding and each document embedding. This yields the cosine similarity scores. Identifying the most similar document is simply a matter of finding the one with the highest score.
+However, this brute-force approach is inefficient—it requires comparing the query against every vector in the database, which becomes slow at scale. To address this, vector indexes are used. These are specialized data structures that enable algorithms to compute similarity scores with only a small subset of vectors, significantly speeding up the search while still returning exact or near-optimal results.
+A vector index is specifically designed to store and organize high-dimensional embeddings for fast similarity and nearest neighbor searches. This organization is what enables vector indexes to scale to millions or even billions of vectors while maintaining low-latency performance. Instead of treating the dataset as a flat list, the index structures the data in a way that reflects the geometry of the vector space—clustering similar vectors together or linking them through proximity-based graphs. This allows the search algorithm to prune large portions of the dataset early in the search process, focusing only on the most promising regions.
+What is a Hierarchical Navigable Small World (HNSW)?
+HNSW is a fast, scalable graph-based vector index designed for approximate nearest neighbor (ANN) search in high-dimensional spaces. It is the sole indexing method supported by Chroma DB and is widely adopted in other vector databases due to its performance and reliability.
+How It Works
+HNSW builds a multi-layered graph where:
+The upper layers contain a sparse overview of the data for fast navigation.
+The bottom layer holds all vectors for detailed search.
+Each vector connects to a few nearby neighbors, forming a "small world" network—meaning most vectors can be reached in just a few steps.
+Search Process
+The algorithm starts at the top layer and moves closer to the query vector as it descends, refining the search at each level. This structure allows it to skip most of the dataset and still find highly similar vectors quickly.
+Why Use HNSW?
+Fast: Avoids scanning the entire dataset.
+Accurate: Delivers near-exact results.
+Scalable: Handles millions to billions of vectors.
+Versatile: Works with various similarity metrics.
+Setting Up HNSW in Chroma DB
+In Chroma DB, the HNSW vector index is configured during collection creation. Since HNSW is an approximate nearest neighbor algorithm, it's important to understand how its configuration affects both accuracy and performance. Parameters such as search speed, memory usage, and recall can all be tuned through the index settings. The example below demonstrates how to configure HNSW using the hnsw key:
+# Setup
+import chromadb
+from chromadb.utils import embedding_functions
+ef = embedding_functions.SentenceTransformerEmbeddingFunction(
+   model_name="all-MiniLM-L6-v2"
+)
+
+
+# Collection creation
+client = chromadb.Client()
+collection = client.create_collection(
+   name="my_collection_name",
+   metadata={"topic": "query testing"},
+   configuration={
+       "hnsw": {
+           "space": "cosine",
+           "ef_search": 100,
+           "ef_construction": 100,
+           "max_neighbors": 16
+       },
+       "embedding_function": ef
+   }
+)
+
+The key configuration parameters are:
+space: selects the distance metric. Possible options include:
+l2: squared L2 (Euclidean) distance (default)
+ip: inner (dot) product distance
+cosine: cosine distance
+ef_search: the size of the candidate list used to search for nearest neighbors when a nearest neighbor search is performed. The default value is 100. Higher values improve both accuracy and recall, but at the cost of slower performance and increased computatuonal cost.
+ef_construction: the size of the candidate list used to select neighbors when a node is inserted during index construction. The default value is 100. Higher values improve the quality of the index and accuracy, but at the cost of slower performance and increased memory usage.
+max_neighbors: the maximum number of connections each node can have during construction. The defualt value is 16. Higher values lead to denser graphs that perform better during searches at the cost of higher memory usage and construction time.
+We can categorize the performance-based parameters into two types:
+ef_search directly controls the breadth of the search at query time, making it the most direct lever for search quality (recall) vs. query speed.
+ef_construction and max_neighbors affect the quality of the built index. A higher-quality, denser index (achieved with higher ef_construction and max_neighbors) provides a better foundation for searches, potentially leading to better accuracy. However, this quality comes at the cost of significantly longer index build times and higher memory consumption during construction and for storing the index.
+Performing Similarity Searches in Chroma DB
+Add data
+Before performing a similarity search, we must add data to our collection:
+collection.add(
+   documents=[
+       "Giant pandas are a bear species that lives in mountainous areas.",
+       "A pandas DataFrame stores two-dimensional, tabular data",
+       "I think everyone agrees that pandas are some of the cutest animals on the planet",
+       "A direct comparison between pandas and polars indicates that polars is a more efficient library than pandas.",
+   ],
+   metadatas=[
+       {"topic": "animals"},
+       {"topic": "data analysis"},
+       {"topic": "animals"},
+       {"topic": "data analysis"},
+   ],
+   ids=["id1", "id2", "id3", "id4"]
+)
+As shown in the code above, all four documents mention "pandas." However, documents id1 and id3 refer to pandas as animals, while id2 and id4 refer to the Python library. Although the word "pandas" appears in every document, its meaning differs. This dataset is useful for evaluating whether a semantic search system can distinguish between these different meanings based on context.
+Querying in Chroma DB
+Once a collection is created and populated, performing a similarity search is as simple as querying the database. In Chroma DB, the results are returned using an approximate nearest neighbor search powered by the HNSW algorithm, based on the distance metric specified during collection creation.
+Let's query our collection using the query cats:
+collection.query(
+   query_texts=["cats"],
+   n_results=10,
+)
+ 
+Note that querying the database involves passing the query, in a list, to the query_texts parameter in the .query() method. The optional parameter n_results controls the number of results to retrieve. In this case, n_results was set to 10, which exceeds the number of documents in the collection. Consequently, in this case, all results will be retrieved, ranked from most similar to the query to the least similar. The following presents the output of the above query:
+{'ids': [['id3', 'id1', 'id2', 'id4']],
+'embeddings': None,
+'documents': [['I think everyone agrees that pandas are some of the cutest animals on the planet',
+  'Giant pandas are a bear species that lives in mountainous areas.',
+  'A pandas DataFrame stores two-dimensional, tabular data',
+  'A direct comparison between pandas and polars indicates that polars is a more efficient library than pandas.']],
+'uris': None,
+'included': ['metadatas', 'documents', 'distances'],
+'data': None,
+'metadatas': [[{'topic': 'animals'},
+  {'topic': 'animals'},
+  {'topic': 'data analysis'},
+  {'topic': 'data analysis'}]],
+'distances': [[0.7380143404006958,
+  0.8351750373840332,
+  0.8634340167045593,
+  0.9299634695053101]]}
+Note that, as expected, all four results got retrieved. However, the top two retrieved texts, those that resulted in the lowest cosine distance to the search query, were:
+"I think everyone agrees that pandas are some of the cutest animals on the planet" and
+"Giant pandas are a bear species that lives in mountainous areas."
+Obviously, these two documents were retrieved because they relate to an animal as opposed to a programming library, and the query (cats) absent any other context likely refers to cats as animals as well. Moreover, the top search result was a document that discussed the cuteness of pandas, and, since cats are generally considered to be cute, likely resulted in that document being chosen over the more general one about pandas that referred to them living in mountainous areas.
+These two documents were likely retrieved because they relate to animals rather than the Python programming library. Given that the query was simply "cats", with no additional context, it's reasonable to assume it refers to cats as animals. Moreover, the top retrieved document focused on the cuteness of pandas, which likely aligned more closely with the query "cats", a word also associated with cuteness, than a more general document about pandas' natural habitat.
+Querying with filters
+Suppose we wanted to find the document that aligns most closely with the query polar bear using the following code:
+1
+2
+3
+4
+collection.query(
+   query_texts=["polar bear"],
+   n_results=1,
+)
+The above code produces the following output:
+1
+2
+3
+4
+5
+6
+7
+8
+{'ids': [['id4']],
+'embeddings': None,
+'documents': [['A direct comparison between pandas and polars indicates that polars is a more efficient library than pandas.']],
+'uris': None,
+'included': ['metadatas', 'documents', 'distances'],
+'data': None,
+'metadatas': [[{'topic': 'data analysis'}]],
+'distances': [[0.6243703365325928]]}    
+What went wrong?
+In this case, the word polar in the query was mistakenly matched with the term polars, referring to the Python data processing library mentioned in the document. As a result, the semantic search failed to retrieve documents about polar bears.
+There are several ways to address this issue. One option is to refine the query by adding more context. Another is to try a different embedding model that may better capture the intended meaning. However, a simpler and more effective solution might be to apply filters to narrow the search results to a subset of the documents.
+Consider the following code that enhances our original query by adding a metadata filter that narrows the search to documents about a specific topic:
+collection.query(
+   query_texts=["polar bear"],
+   n_results=1,
+   where={'topic': 'animals'}
+)
+
+The updated query now returns the correct result—a document about bears, rather than one related to Python libraries:
+'ids': [['id1']],
+'embeddings': None,
+'documents': [['Giant pandas are a bear species that lives in mountainous areas.']],
+'uris': None,
+'included': ['metadatas', 'documents', 'distances'],
+'data': None,
+'metadatas': [[{'topic': 'animals'}]],
+'distances': [[0.7096824645996094]]}
+
+Alternatively, instead of using a metadata filter, we could perform a full-text search to include or exclude documents based on specific words or phrases. For example, the following query excludes all documents that contain the word "library":
+1
+2
+3
+4
+5
+collection.query(
+   query_texts=["polar bear"],
+   n_results=1,
+   where_document={'$not_contains': 'library'}
+)
+
+output:
+'ids': [['id1']],
+'embeddings': None,
+'documents': [['Giant pandas are a bear species that lives in mountainous areas.']],
+'uris': None,
+'included': ['metadatas', 'documents', 'distances'],
+'data': None,
+'metadatas': [[{'topic': 'animals'}]],
+'distances': [[0.7096824645996094]]}
+
+Finally, it should be noted that there is nothing wrong with combining metadata filtering and full text search in Chroma DB:
+collection.query(
+   query_texts=["polar bear"],
+   n_results=1,
+   where={'topic': 'animals'},
+   where_document={'$not_contains': 'library'}
+)
+       output:
+1
+2
+3
+4
+5
+6
+7
+8
+'ids': [['id1']],
+'embeddings': None,
+'documents': [['Giant pandas are a bear species that lives in mountainous areas.']],
+'uris': None,
+'included': ['metadatas', 'documents', 'distances'],
+'data': None,
+'metadatas': [[{'topic': 'animals'}]],
+'distances': [[0.7096824645996094]]}
+
+Conclusion
+In this reading, you gained a foundational understanding of how similarity search works in Chroma DB, with a focus on vector indexes and the Hierarchical Navigable Small World (HNSW) algorithm. Key topics covered include:
+Vector indexes fundamentals – how they structure high-dimensional data to enable efficient similarity searches.
+The HNSW algorithm – its use of a multi-layered graph to perform fast, scalable approximate nearest neighbor (ANN) searches.
+Configuring HNSW in Chroma DB – including key parameters like ef_search, ef_construction, and max_neighbors, and how they affect performance and accuracy.
+Executing similarity searches – from adding documents and querying semantically to interpreting results in context.
+Refining search results – using metadata filters and full-text constraints to enhance relevance and reduce semantic mismatches.
+By the end, you should be equipped with both the theoretical insight and practical skills to implement and fine-tune similarity search in Chroma DB, including for advanced use cases like retrieval-augmented generation (RAG).
+ntroduction to Vector Databases and Chroma DB Cheat Sheet
+
+Estimated Reading Time: 15 minutes
+Distance and Similarity Metrics
+1. L2 Distance (Euclidean Distance)
+Definition: The L2 distance between two vectors aa and bb is the square root of the sum of the squared differences between corresponding elements:
+L2(a,b)= ∑i=1n(ai−bi)2L2(a,b)= ∑i=1n​(ai​−bi​)2​
+Properties:
+The L2 distance measures the straight-line distance between two points in Euclidean space, following the principles of the Pythagorean theorem.
+It is sensitive to both the magnitude and direction of the vectors, meaning that changes in either can significantly affect the calculated distance.
+This distance metric is commonly used in applications involving spatial or geometric data, such as image analysis, computer vision, and geographic mapping.
+Use Case: A common use case for L2 distance is determining the closest point to a given location in two-dimensional (2D) or three-dimensional (3D) space. This approach is frequently used in computer vision tasks, where spatial proximity between features or objects plays a critical role.
+2. Dot Product (Inner Product) Similarity and Distance
+Definition: The dot product of two vectors is:
+a⋅b=∑i=1naibia⋅b=∑i=1n​ai​bi​
+Alternative Calculation: The dot product can also be calculated using magnitudes and angles:
+a⋅b=∣∣a∣∣ ∣∣b∣∣cos(α)a⋅b=∣∣a∣∣ ∣∣b∣∣cos(α)
+here ∣∣a∣∣=∑k=1nak2∣∣a∣∣=∑k=1n​ak2​​ is the L2 norm of vector aa, and αα is the angle between vectors aa and bb.
+Properties:
+The dot product of two vectors can be positive, negative, or zero, depending on the angle between them.
+Larger dot product values typically indicate a higher degree of similarity between the vectors, especially when they are pointing in similar directions.
+If a distance-like metric is needed, the negative of the dot product can be used. In this case, larger (more negative) values correspond to greater dissimilarity or distance.
+The dot product is sensitive to both the magnitude and direction of the vectors, meaning that changes in either will affect the result.
+It is frequently used in machine learning models, such as in neural networks for computing activations or in matrix factorization for recommendation systems.
+Use Case: When the length of the vector (representing something such as relevance, confidence, or quantity) is meaningful. For instance, in recommendation systems, the direction of vectors typically indicates two products are about the same topic, but larger magnitudes might indicate that a product is more popular. In this case using dot product similarity makes sense, because one would want to recommend the products that are not only about the same topic, but also popular.
+3. Cosine Similarity and Distance
+Definition: Cosine similarity measures the cosine of the angle between two vectors:
+cosine_similarity(a,b)=a⋅b∣∣a∣∣ ∣∣b∣∣cosine_similarity(a,b)=∣∣a∣∣ ∣∣b∣∣a⋅b​
+Distance Conversion: To convert cosine similarity to cosine distance:
+cosine_distance(a,b)=1−cosine_similarity(a,b)cosine_distance(a,b)=1−cosine_similarity(a,b)
+Alternative Calculation with Normalized Vectors: Cosine similarity can be calculated more efficiently if the vectors are normalized. To normalize a vector, divide it by its L2 norm:
+norm(a)=a∣∣a∣∣norm(a)=∣∣a∣∣a​
+A normalized vector has the property that the sum of the squared components sums to one:
+∑i=1nnorm(a)i2=1∑i=1n​norm(a)i2​=1
+Calculating cosine similarity between two normalized vectors is as easy as calculating the dot product between them:
+cosine_similarity(a,b)=a⋅b∣∣a∣∣ ∣∣b∣∣=a∣∣a∣∣⋅b∣∣b∣∣=norm(a)⋅norm(b)cosine_similarity(a,b)=∣∣a∣∣ ∣∣b∣∣a⋅b​=∣∣a∣∣a​⋅∣∣b∣∣b​=norm(a)⋅norm(b)
+Properties:
+Cosine similarity focuses on the orientation of vectors rather than their magnitude, measuring the cosine of the angle between them.
+It is particularly well-suited for high-dimensional, sparse data, such as text embeddings or term-frequency vectors in natural language processing.
+This metric is invariant to vector length, meaning that scaling a vector up or down does not affect the similarity score.
+Use Case: A common use case for cosine similarity is measuring document similarity in natural language processing (NLP), where it helps identify texts with similar content regardless of their length.
+Choosing the Right Metric
+Metric
+Sensitive to Magnitude
+Normalized
+Best For
+L2 Distance
+✅ Yes
+❌ No
+Spatial data, clustering
+Cosine Distance
+❌ No
+✅ Yes
+Text, embeddings, NLP
+Dot Product
+✅ Yes
+❌ No
+Neural networks, recommender systems
+
+Practical Considerations
+Normalization: Normalize vectors if you expect to only need to calculate cosine similarity. For many natural language processing tasks and text embedding models, this is the default option.
+High-Dimensional Data:
+L2 distance can suffer from the "curse of dimensionality." Consider using a different metric or using a dimensionality reduction technique if the data exhibits high dimensionality.
+Cosine distance often performs better in high dimensions, and is the default choice in many natural language processing and text-based tasks.
+Dot product can be computed efficiently using matrix operations, and can be used to calculate cosine similarity if the vectors are normalized.
+Vector Databases versus Traditional Databases
+Function
+Traditional Databases
+Vector Databases
+Data Representation
+Structured format using tables, rows, columns
+Multi-dimensional vectors encoding complex/unstructured data
+Data Search
+SQL queries for structured data
+Similarity searches for vectorized data
+Indexing
+B-trees for efficient retrieval
+Specialized indices such as the graph-based HNSW for approximate nearest neighbor search
+Scalability
+Resource augmentation or data sharding
+Distributed architectures for horizontal scaling
+Applications
+Business applications, transactional systems
+Context-aware AI applications, similarity search, NLP, multimedia analysis
+
+Vector Database Fundamentals
+Vector Database: Specialized database designed to store and query vectorized data rapidly. Data is represented as vectors in multi-dimensional space, where each vector dimension corresponds to a specific attribute.
+Vector Libraries vs Vector Databases:
+Vector Libraries: In-memory with similarity capabilities
+Vector Databases: Full CRUD operations (create, read, update, delete) + enterprise production deployments
+Chroma DB Key Tips and Best Practices
+Filtering Best Practices
+Document filtering is case-sensitive in Chroma DB - searching for "Pandas" will not find "pandas"
+Combine metadata and document filters for precise results using both where and where_document parameters
+Use $and and $or operators for complex filtering logic
+Use $in and $nin for list-based filtering
+Key Chroma DB Features
+Dual-filtering approach: Supports both metadata filtering (structured attributes) and document filtering (full text search)
+Metadata filtering: Similar to SQL WHERE clauses, but more flexible and can be combined with vector search
+Document filtering: Comparable to SQL's CONTAINS or LIKE operators, but more powerful when integrated with vector search
+Full text search: Document filtering is also referred to as full text search in Chroma DB
+Chroma DB Setup & Configuration
+Basic Setup
+1
+2
+3
+4
+5
+6
+7
+8
+9
+10
+import chromadb
+from chromadb.utils import embedding_functions
+
+
+# Define embedding function
+ef = embedding_functions.SentenceTransformerEmbeddingFunction(
+   model_name="all-MiniLM-L6-v2"
+)
+
+
+# Create client
+client = chromadb.Client()
+
+         
+
+            
+              
+              Copied!
+            
+            
+              
+              Wrap Toggled!
+            
+            
+            
+         
+
+       
+Collection Creation with Typical HNSW Configuration
+1
+2
+3
+4
+5
+6
+7
+8
+9
+10
+collection = client.create_collection(
+   name="my_collection_name",
+   metadata={"topic": "query testing"},
+   configuration={
+       "hnsw": {
+           "space": "cosine",    # Distance metric
+       },
+       "embedding_function": ef
+   }
+)
+
+         
+
+            
+              
+              Copied!
+            
+            
+              
+              Wrap Toggled!
+            
+            
+            
+         
+
+       
+What is a Vector Index?
+Finding semantically similar vectors using brute-force comparison (checking every vector in the database) becomes inefficient at scale. Vector indexes solve this by using specialized data structures that enable algorithms to compute similarity scores with only a small subset of vectors, significantly speeding up search while still returning exact or near-optimal results.
+A vector index organizes high-dimensional embeddings to reflect the geometry of the vector space, clustering similar vectors together or linking them through proximity-based graphs. This allows the search algorithm to prune large portions of the dataset early in the search process, enabling scaling to millions or billions of vectors while maintaining low-latency performance.
+What is HNSW?
+HNSW (Hierarchical Navigable Small World) is a fast, scalable graph-based vector index designed for approximate nearest neighbor (ANN) search in high-dimensional spaces. It is the sole indexing method supported by Chroma DB and is widely adopted in other vector databases due to its performance and reliability.
+How It Works: HNSW builds a multi-layered graph where:
+The upper layers contain a sparse overview of the data for fast navigation.
+The bottom layer holds all vectors for detailed search.
+Each vector connects to a few nearby neighbors, forming a "small world" network—meaning most vectors can be reached in just a few steps.
+Search Process: The algorithm starts at the top layer and moves closer to the query vector as it descends, refining the search at each level. This structure allows it to skip most of the dataset and still find highly similar vectors quickly.
+Why Use HNSW?:
+Fast: Avoids scanning the entire dataset
+Accurate: Delivers near-exact results
+Scalable: Handles millions to billions of vectors
+Versatile: Works with various similarity metrics
+HNSW Distance Metric Parameters
+space: Distance metric options
+l2: Squared L2 (Euclidean) distance (default)
+ip: Inner (dot) product distance
+cosine: Cosine distance
+HNSW Performance Parameters: Key Trade-offs
+Higher ef_search: Better accuracy, slower performance
+Higher ef_construction: Better index quality, longer build time
+Higher max_neighbors: Better search performance, more memory usage
+Data Operations
+Adding Documents
+1
+2
+3
+4
+5
+6
+7
+8
+9
+10
+11
+collection.add(
+   documents=[
+       "Document text 1",
+       "Document text 2"
+   ],
+   metadatas=[
+       {"source": "source1", "category": "type1"},
+       {"source": "source2", "category": "type2"}
+   ],
+   ids=["id1", "id2"]
+)
+
+         
+
+            
+              
+              Copied!
+            
+            
+              
+              Wrap Toggled!
+            
+            
+            
+         
+
+       
+Retrieving Documents
+1
+2
+3
+4
+5
+6
+7
+# Get all documents
+all_items = collection.get()
+
+
+# Get with metadata filter
+filtered_items = collection.get(
+   where={"source": "source1"}
+)
+
+         
+
+            
+              
+              Copied!
+            
+            
+              
+              Wrap Toggled!
+            
+            
+            
+         
+
+       
+Filtering in Chroma DB
+Metadata Filtering Operators
+1
+2
+3
+4
+5
+6
+7
+8
+9
+10
+11
+12
+13
+14
+# Basic equality
+where={"key": "value"}
+# Equivalent to
+where={"key": {"$eq": "value"}}
+
+
+# Comparison operators
+"$eq"   # equal to (string, int, float)
+"$ne"   # not equal to
+"$gt"   # greater than (int, float)
+"$gte"  # greater than or equal to
+"$lt"   # less than (int, float)
+"$lte"  # less than or equal to
+"$in"   # in list
+"$nin"  # not in list
+
+         
+
+            
+              
+              Copied!
+            
+            
+              
+              Wrap Toggled!
+            
+            
+            
+         
+
+       
+Complex Filters with Logical Operators
+1
+2
+3
+4
+5
+6
+7
+8
+9
+10
+11
+12
+13
+14
+15
+16
+17
+18
+19
+# AND operation; you can replace `and`with`or` to make this an OR operation
+collection.get(
+   where={
+       "$and": [
+           {"source": {"$eq": "langchain.com"}},
+           {"version": {"$lt": 0.3}}
+       ]
+   }
+)
+
+
+# Using a list to perform an OR operation on the values of a metadata key
+collection.get(
+   where={
+       "$and": [
+           {"source": {"$in": ["langchain.com", "llamaindex.ai"]}},
+           {"version": {"$lt": 0.3}}
+       ]
+   }
+)
+
+         
+
+            
+              
+              Copied!
+            
+            
+              
+              Wrap Toggled!
+            
+            
+            
+         
+
+       
+Document Content Filtering
+1
+2
+3
+4
+5
+6
+7
+8
+9
+10
+11
+12
+13
+# Contains text
+where_document={"$contains": "pandas"}
+
+
+# Does not contain text
+where_document={"$not_contains": "library"}
+
+
+# Combined with logical operators
+where_document={
+   "$or": [
+       {"$contains": "LangChain"},
+       {"$contains": "Python"}
+   ]
+}
+
+         
+
+            
+              
+              Copied!
+            
+            
+              
+              Wrap Toggled!
+            
+            
+            
+         
+
+       
+Similarity Search
+Basic Query
+1
+2
+3
+4
+results = collection.query(
+   query_texts=["search term"],
+   n_results=3  # Number of results to return
+)
+
+         
+
+            
+              
+              Copied!
+            
+            
+              
+              Wrap Toggled!
+            
+            
+            
+         
+
+       
+Query with Filters
+1
+2
+3
+4
+5
+6
+7
+8
+9
+10
+11
+12
+13
+14
+15
+16
+17
+18
+19
+20
+21
+# With metadata filter
+results = collection.query(
+   query_texts=["polar bear"],
+   n_results=1,
+   where={'topic': 'animals'}
+)
+
+
+# With document filter
+results = collection.query(
+   query_texts=["polar bear"],
+   n_results=1,
+   where_document={'$not_contains': 'library'}
+)
+
+
+# Combined filters
+results = collection.query(
+   query_texts=["polar bear"],
+   n_results=1,
+   where={'topic': 'animals'},
+   where_document={'$not_contains': 'library'}
+)
+
+         
+
+            
+              
+              Copied!
+            
+            
+              
+              Wrap Toggled!
+            
+            
+            
+         
+
+       
+Common Workflow Pattern
+1
+2
+3
+4
+5
+6
+7
+8
+9
+10
+11
+12
+13
+14
+15
+16
+17
+18
+19
+20
+21
+22
+23
+# 1. Setup
+import chromadb
+from chromadb.utils import embedding_functions
+
+
+# 2. Create embedding function and client
+ef = embedding_functions.SentenceTransformerEmbeddingFunction(model_name="all-MiniLM-L6-v2")
+client = chromadb.Client()
+
+
+# 3. Create collection with configuration
+collection = client.create_collection(
+   name="collection_name",
+   configuration={"hnsw": {"space": "cosine"}, "embedding_function": ef}
+)
+
+
+# 4. Add documents
+collection.add(documents=texts, metadatas=metadata, ids=ids)
+
+
+# 5. Perform similarity search
+results = collection.query(query_texts=["query"], n_results=5)
+
+
+# 6. Process results
+for i, (doc_id, score, text) in enumerate(zip(results['ids'][0], results['distances'][0], results['documents'][0])):
+   print(f"Rank {i+1}: {doc_id}, Score: {score:.4f}, Text: {text}")
+
+1.
+Question 1
+How do vector databases enhance recommendation systems compared to traditional databases?
+
+
+By supporting larger volumes of data than traditional databases
+By providing a more secure data storage solution
+By enabling efficient similarity searches for complex data types
+By storing data in a format that simplifies complex queries
+1 point
+2.
+Question 2
+What is a key difference between vector databases and traditional databases?
+
+
+Traditional databases are optimized for numerical data types.
+Vector databases use relational tables for data storage.
+Vector databases are designed to handle embeddings.
+Traditional databases are more efficient for similarity searches.
+1 point
+3.
+Question 3
+Which of the following statements differentiates between in-memory vector databases and other types of vector databases in terms of storage?
+
+
+In-memory vector databases are slower in query responses compared to other types.
+In-memory vector databases store vectors on disk, which enhances data persistence.
+In-memory vector databases are a type of database that do not support vector search.
+In-memory vector databases store vectors directly in memory, which can lead to faster query responses.
+1 point
+4.
+Question 4
+Which metric measures the distance between vectors based on direction but not their magnitude?
+
+
+Euclidean distance
+Cosine distance
+Inner product distance
+Dot product distance
+1 point
+5.
+Question 5
+What does the direction of a vector embedding typically represent?
+
+
+The topic or semantic meaning of the item
+The frequency of the item in the dataset
+The strength of the item being represented
+The distance between two unrelated items
+1 point
+6.
+Question 6
+Which of the following statements differentiates between the roles of indexing and querying in Chroma DB architecture?
+
+
+Indexing is responsible for data input, whereas querying is responsible for data output.
+Indexing and querying both serve the same purpose of data retrieval in Chroma DB.
+Indexing organizes data for efficient retrieval, whereas querying retrieves data based on semantic similarity.
+Indexing is used to encrypt data, whereas querying is used to decrypt it.
+1 point
+7.
+Question 7
+Which of the following statements most accurately defines the role of vector embeddings in Chroma DB's similarity search process?
+
+
+Vector embeddings are primarily used to increase the speed of database queries.
+Vector embeddings are used to convert data into a format that enables similarity comparison.
+Vector embeddings are used to encrypt data for security purposes in Chroma DB.
+Vector embeddings are used to store metadata about the data entries.
