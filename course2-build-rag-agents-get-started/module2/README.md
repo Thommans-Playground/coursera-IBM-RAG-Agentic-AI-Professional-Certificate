@@ -26,7 +26,9 @@ Type-along versions with code, diagrams and exercises:
 - [Tutorial 1: Gradio concepts, rebuilt with Next.js and FastAPI](tutorials/01-gradio-concepts-adapted-to-nextjs.md) follows the video: text in and out, several inputs, file upload, slider, dropdown, radio, checkbox, launching.
 - [Tutorial 2: build the RAG web app](tutorials/02-build-the-rag-web-app.md) grows a chat-with-your-documents app one problem at a time.
 
-The finished, working project is in [app/](app/) (`backend/` for FastAPI, `frontend/` for Next.js). Source material: [transcript.md](transcript.md).
+- [Tutorial 3: the lab, a PDF question-answering bot](tutorials/03-lab-pdf-qa-bot-adapted.md) follows the lab *Construct a QA Bot that Leverages LangChain and LLMs to Answer Questions from Loaded Documents*: PDF loader, splitter, embeddings, vector store, retriever, QA chain, then the interface (Gradio, and the same thing as a FastAPI upload endpoint). It flags four problems in the lab's code.
+
+The finished, working project is in [app/](app/) (`backend/` for FastAPI, `frontend/` for Next.js). Source material: [transcript.md](transcript.md) and [lab-instructions.md](lab-instructions.md) (the PDF QA bot lab).
 
 ---
 
