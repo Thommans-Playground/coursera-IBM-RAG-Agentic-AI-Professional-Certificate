@@ -1,0 +1,29 @@
+id: nist-ai-rmf
+name: NIST Artificial Intelligence Risk Management Framework (AI RMF 1.0)
+kind: RISK_FRAMEWORK            # voluntary guidance, not certifiable
+scope_level: ORGANISATION_AND_PRODUCT
+version: "1.0"
+published: 2023-01
+publisher: US National Institute of Standards and Technology (NIST)
+levels: [function, category, subcategory]
+counts: {function: 4, category: 19, subcategory: 72}
+text_policy: PUBLIC             # US government work; text may be stored and quoted
+as_of: 2026-10-24
+sources:
+  - id: ai-100-1
+    title: NIST AI 100-1, Artificial Intelligence Risk Management Framework (AI RMF 1.0)
+    url: https://nvlpubs.nist.gov/nistpubs/ai/nist.ai.100-1.pdf
+    role: authoritative framework text
+  - id: playbook
+    title: NIST AI RMF Playbook (JSON)
+    url: https://airc.nist.gov/docs/playbook.json
+    role: clean subcategory text, plus NIST's own tags (AI actors, topics). Companion, lightly edited wording in places
+known_changes: >
+  NIST states AI RMF 1.0 is being updated and the Playbook is revised about twice a year.
+  Re-run tools/build_nist_ai_rmf.py when either changes.
+statuses:
+  verified: subcategory text taken from the Playbook and agrees (similarity 0.95 or more) with AI 100-1
+  verified-variant: Playbook and AI 100-1 word it differently; AI 100-1 stored, Playbook wording in note
+review_log:
+  - date: 2026-10-24
+    by: automated cross-check of two NIST documents; not yet reviewed by a person

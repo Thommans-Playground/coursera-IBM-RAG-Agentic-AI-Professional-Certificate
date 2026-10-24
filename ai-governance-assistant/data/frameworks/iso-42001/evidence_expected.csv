@@ -1,0 +1,79 @@
+provision_id,evidence_expected,source
+iso-42001:1,No evidence required — informational only,workbook
+iso-42001:2,No evidence required — informational only,workbook
+iso-42001:3,No evidence required — informational only,workbook
+iso-42001:4.1,Context analysis record; role determination documentation; documentation of external/internal issues; climate change relevance determination,workbook
+iso-42001:4.2,Interested-parties register; requirements matrix per interested party; documentation of which requirements are addressed by the AIMS,workbook
+iso-42001:4.3,Approved scope statement (documented information); inclusions and exclusions with rationale; evidence scope is available internally and externally as appropriate,workbook
+iso-42001:4.4,AIMS process documentation; process interaction map or governance structure; evidence of operation and maintenance,workbook
+iso-42001:5.1,Board/executive mandate or charter for AIMS; governance meeting minutes with AI agenda items; evidence of resource allocation; communications on AI management importance,workbook
+iso-42001:5.2,"Approved AI policy (signed, dated, version-controlled); distribution and awareness records; evidence policy is available to interested parties; links to related policies (security, privacy, quality)",workbook
+iso-42001:5.3,RACI or equivalent role descriptions; documented assignments of AIMS conformance and reporting responsibilities; communication records for role assignments,workbook
+iso-42001:6.1.1,Risk and opportunity register; AI risk criteria documentation; action plan with integration approach; effectiveness evaluation records; retained documented information on actions,workbook
+iso-42001:6.1.2,"AI risk assessment methodology/procedure; completed risk register with likelihood, consequence, risk level, and risk owner; risk prioritization records; retained documented information on process",workbook
+iso-42001:6.1.3,"AI risk treatment plan; Statement of Applicability (SoA) with selected controls, inclusion/exclusion justifications; residual risk acceptance records (management approved); documented information on treatment process",workbook
+iso-42001:6.1.4,AI impact assessment process documentation; completed impact assessments per AI system (documented results); evidence results were considered in risk assessment (6.1.2); disclosure to interested parties where appropriate,workbook
+iso-42001:6.2,"AI objectives register (documented information) with measurable targets, owners, deadlines, and evaluation method; monitoring results; evidence of communication and update",workbook
+iso-42001:6.3,"Change management procedure; change log with trigger, assessment, approvals, and outcome; evidence of planned execution of changes",workbook
+iso-42001:7.1,"Resource allocation records; budget approvals for AIMS activities; resource inventory (data, tooling, compute, human resources)",workbook
+iso-42001:7.2,Competence matrix by role; training completion records; competence assessments; evidence of gap remediation actions and effectiveness evaluation,workbook
+iso-42001:7.3,Awareness programme records; training completion records; policy acknowledgement records; evidence of communication,workbook
+iso-42001:7.4,Communication plan; communication records (internal and external); evidence of external reporting where applicable,workbook
+iso-42001:7.5.1,Document register showing all required and organization-determined documented information,workbook
+iso-42001:7.5.2,"Document control procedure; evidence of identification, format, and review/approval on documented information",workbook
+iso-42001:7.5.3,Document control procedure; version-controlled document register; access control records; retention and disposal schedule; evidence of control of external documents,workbook
+iso-42001:8.1,Operational runbooks and procedures; process execution records; control monitoring evidence; change control records; evidence of unintended change review; supplier/external process controls,workbook
+iso-42001:8.2,Completed AI risk assessments with dates and triggers; evidence of periodic reassessment; risk owner approvals; retained documented results,workbook
+iso-42001:8.3,Evidence of control implementation; treatment plan status records; effectiveness verification records; updated treatment plans where required; retained documented results,workbook
+iso-42001:8.4,Completed impact assessments per AI system with dates and triggers; retained documented results; evidence of reassessment on significant changes,workbook
+iso-42001:9.1,Monitoring metric definitions and thresholds; measurement results and analysis records; performance evaluation reports; documented information as evidence of results,workbook
+iso-42001:9.2.1,Audit programme; completed audit reports with findings against both organizational and standard requirements; records showing AIMS is effectively implemented,workbook
+iso-42001:9.2.2,"Audit programme document (frequency, methods, responsibilities, scope); individual audit plans; audit reports reported to relevant management; auditor independence evidence; retained audit programme and result records",workbook
+iso-42001:9.3.1,Management review schedule; evidence of top management participation,workbook
+iso-42001:9.3.2,Management review agenda showing all required inputs; evidence that each input was addressed; management review minutes,workbook
+iso-42001:9.3.3,Management review minutes/decisions; action items with owners and deadlines; documented information as evidence; evidence of follow-through from previous reviews,workbook
+iso-42001:10.1,"Improvement register or backlog; evidence that improvements identified through audits, monitoring, incidents, and management reviews are tracked and implemented",workbook
+iso-42001:10.2,"Nonconformity log (description, root cause, action, owner, deadline, effectiveness review); closed nonconformity records with effectiveness verification; retained documented information",workbook
+iso-42001:A.2.2,Documented AI policy covering development and/or use of AI systems,workbook
+iso-42001:A.2.3,"Policy alignment analysis; cross-references between AI policy and other policies (security, privacy, quality, safety)",workbook
+iso-42001:A.2.4,Policy review schedule; records of reviews conducted; evidence of updates made following reviews,workbook
+iso-42001:A.3.2,AI role definitions and responsibility assignments; RACI or equivalent; evidence of communication of roles,workbook
+iso-42001:A.3.3,Concern reporting process documentation; evidence of channel availability; records of concerns raised and resolved; whistleblower protection mechanism,workbook
+iso-42001:A.4.2,Resource documentation per AI system lifecycle stage; resource inventory,workbook
+iso-42001:A.4.3,"Data resource documentation: provenance, last updated date, categories (training/validation/test/production), labelling process, intended use, quality, retention/disposal policies, known bias issues, data preparation",workbook
+iso-42001:A.4.4,"Tooling resource documentation: algorithm types, ML models, data conditioning tools, evaluation methods, software/hardware for development and deployment",workbook
+iso-42001:A.4.5,"System/compute resource documentation: resource requirements, location (on-premises/cloud/edge), processing resources, environmental impact of hardware",workbook
+iso-42001:A.4.6,"Human resource documentation per lifecycle stage: roles, competences, expertise types (data scientists, safety/security/privacy experts, domain experts, human oversight roles)",workbook
+iso-42001:A.5.2,"Impact assessment process documentation including: trigger circumstances, process elements (identification, analysis, evaluation, treatment, documentation), responsible parties, how results inform design/use",workbook
+iso-42001:A.5.3,Completed impact assessment reports; defined retention period; evidence results are retained per schedule,workbook
+iso-42001:A.5.4,"Impact assessments covering: fairness, accountability, transparency/explainability, security/privacy, safety/health, financial consequences, accessibility, human rights; coverage of specific demographic and vulnerable groups",workbook
+iso-42001:A.5.5,"Societal impact assessments covering: environmental sustainability, economic impacts, government/democratic impacts, health and safety, norms/culture/values; evidence of misuse scenario consideration",workbook
+iso-42001:A.6.1.2,"Documented responsible development objectives (e.g. fairness, transparency, safety); evidence objectives are integrated into lifecycle stages (requirements, data, training, V&V, deployment)",workbook
+iso-42001:A.6.1.3,"Responsible design/development process documentation covering: lifecycle stages, testing requirements, human oversight requirements, impact assessment triggers, training data rules, release criteria, approvals, change control",workbook
+iso-42001:A.6.2.2,AI system requirements specification documentation; rationale for development; data requirements; revision history when requirements change,workbook
+iso-42001:A.6.2.3,"Design documentation: ML approach, learning algorithm and model type, training approach, data quality approach, evaluation and refinement, hardware/software, security threats, interface design, human interaction, interoperability; final system architecture documentation",workbook
+iso-42001:A.6.2.4,"V&V plan: testing methodologies and tools, test data selection and representativeness, release criteria, evaluation criteria for responsible AI objectives, performance metrics and thresholds, evaluation frequency; completed V&V records",workbook
+iso-42001:A.6.2.5,"Deployment plan: environment considerations, component deployment sequencing, release criteria, V&V completion evidence, management approvals and sign-offs prior to deployment",workbook
+iso-42001:A.6.2.6,"Operations documentation: monitoring procedures (performance, drift, compliance), repair and incident response processes, update procedures (including communication to users), support processes, continuous learning monitoring where applicable",workbook
+iso-42001:A.6.2.7,"Technical documentation per interested party category covering: general description, intended purpose, usage instructions, technical assumptions, limitations, monitoring capabilities, design/architecture, design choices, data used in development, V&V records, changes during operation, impact assessment documentation",workbook
+iso-42001:A.6.2.8,"Event log specifications: phases with logging enabled, log content (time/date of use, production data, out-of-range outputs), retention period aligned with data policies and legal requirements; evidence of log generation and retention",workbook
+iso-42001:A.7.2,"Data management process documentation covering: privacy/security implications, transparency/explainability aspects, representativeness of training data, accuracy and integrity controls",workbook
+iso-42001:A.7.3,"Data acquisition documentation: categories of data needed, quantity, sources (internal/purchased/shared/open/synthetic), source characteristics, demographics/known biases, prior handling, data rights (PII/copyright), metadata, provenance",workbook
+iso-42001:A.7.4,"Data quality requirements documentation; data quality assessment results for training, validation, test and production data; evidence data meets quality requirements; bias impact assessment and adjustments",workbook
+iso-42001:A.7.5,"Data provenance process documentation; provenance records per dataset (creation, update, transcription, abstraction, validation, transfer, sharing, transformation history)",workbook
+iso-42001:A.7.6,"Data preparation criteria documentation; documented preparation methods used (cleaning, imputation, normalisation, scaling, labelling, encoding, statistical exploration); evidence of application",workbook
+iso-42001:A.8.2,"User-facing documentation: purpose, AI disclosure, how to interact, override instructions, technical requirements, human oversight needs, accuracy/performance information, relevant impact assessment findings, update processes, contact information, educational materials; evidence provided to users",workbook
+iso-42001:A.8.3,"External reporting channel (e.g. feedback form, contact email, portal); evidence channel is available and promoted; records of adverse impact reports received and actioned",workbook
+iso-42001:A.8.4,"Incident communication plan: types of incidents requiring notification, notification timelines, authorities to be notified, required content, legal/regulatory requirements; evidence of plan execution when incidents occur",workbook
+iso-42001:A.8.5,"Documentation of reporting obligations (regulatory, contractual); records of information shared with authorities/customers/other interested parties; evidence obligations are met within required timeframes",workbook
+iso-42001:A.9.2,"Responsible use process documentation: required approvals, cost considerations, approved sourcing requirements, legal requirements applicable to use of AI systems",workbook
+iso-42001:A.9.3,"Documented responsible use objectives (e.g. fairness, accountability, transparency, explainability, reliability, safety, robustness/redundancy, privacy/security, accessibility); evidence objectives are implemented; human oversight objectives and mechanisms defined",workbook
+iso-42001:A.9.4,Evidence AI system is deployed per instructions and documentation; event logs/records of deployment and operation; monitoring of use against intended purpose; documented process for raising concerns about intended use,workbook
+iso-42001:A.10.2,Documented responsibility allocation across all parties in the AI lifecycle; supplier/partner documentation showing role and responsibilities; PII controller/processor determination where applicable,workbook
+iso-42001:A.10.3,Supplier management process; supplier risk assessments; supplier selection criteria; ongoing monitoring evidence; corrective action process for non-performing suppliers; evidence suppliers provide adequate technical documentation,workbook
+iso-42001:A.10.4,Customer expectation/needs assessment; contractual or usage agreement evidence addressing customer needs; documentation of risks identified for customer use and how they are communicated,workbook
+iso-42001:B.1,Annex B is normative guidance — not a standalone audit artefact. Evidence is produced at the Annex A control level; Annex B informs how organizations design and implement those controls.,workbook
+iso-42001:C.2,Not a standalone artefact — used to inform AI objectives register under Clause 6.2 and Annex A.6.1.2 / A.9.3,workbook
+iso-42001:C.3,Not a standalone artefact — used to inform risk assessment methodology and risk discovery under Clause 6.1.2 and Annex A risk treatment,workbook
+iso-42001:D.1,Not a standalone audit artefact — informs scope determination (4.3) and multi-domain tailoring of AIMS controls,workbook
+iso-42001:D.2,Not a standalone audit artefact — informs integrated management system design and cross-reference of controls,workbook

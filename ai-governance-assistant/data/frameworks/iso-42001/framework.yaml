@@ -1,0 +1,31 @@
+id: iso-42001
+name: ISO/IEC 42001:2023, Information technology - Artificial intelligence - Management system
+kind: MANAGEMENT_SYSTEM          # certifiable by third-party audit (per general practice; not verified in this project)
+scope_level: ORGANISATION
+version: "2023"
+publisher: ISO/IEC
+levels: [clause, subclause, subsubclause]    # Annex A: annex, topic, group (A.6 only), control; Annexes B-D: annex, annex-item
+counts: {clause: 10, subclause: 24, subsubclause: 12, annex: 4, topic: 9, group: 2, control: 38, annex-item: 5}
+text_policy: STRUCTURE_ONLY      # copyrighted and paywalled: ids, titles and your own notes only. source_text is empty on purpose
+as_of: 2026-10-24
+sources:
+  - id: workbook
+    title: Open AIaaS Framework.xlsx, sheet 5_ISO42001 (ids, titles, type, evidence expected)
+    role: the only source used. Titles are NOT verified against the standard
+  - id: secondary
+    title: third-party summaries of Annex A (e.g. Modulos, Blck Alpaca)
+    role: confirm A.2 to A.4 titles and the figure of 38 controls in 9 topics; one source disagrees on counts
+kinds: {REQUIREMENT: clause 4-10 "shall" requirement, CONTROL: Annex A control, GUIDANCE: Annexes B-D, GROUP: topic or objective group}
+ids: "Clause 6.1.2 = iso-42001:6.1.2; Annex A control = iso-42001:A.6.2.4; guidance = iso-42001:B.1, C.2, D.1. Annex A topic names and the two A.6 groups are not in the workbook and were added from general knowledge"
+facets:
+  normative: normative / informative / definitional (from the workbook "Type" column)
+evidence: evidence_expected.csv holds the workbook's own notes on what evidence an auditor would expect. Your wording, not the standard's
+statuses:
+  unverified-title: title taken from the workbook; needs checking against a licensed copy
+known_gaps:
+  - Annex B has one summary row (B.1); per-control guidance B.2.2 to B.10.4 is not in the workbook
+  - Annex C items (C.2.1 and so on) are inside the single row C.2
+  - topic names A.2-A.10 and the group names under A.6 come from general knowledge, not the workbook
+review_log:
+  - date: 2026-10-24
+    by: built from the workbook; structure check only (38 controls, 9 topics). Not verified against the standard

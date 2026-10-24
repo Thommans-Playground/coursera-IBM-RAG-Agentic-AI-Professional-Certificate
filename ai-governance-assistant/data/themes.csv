@@ -1,0 +1,13 @@
+theme_id,name,definition
+CP-01,Transparency,"The AI system's purpose, logic, data sources, limitations, and decision-making processes are clearly disclosed to relevant stakeholders."
+CP-02,Explainability,The AI system's outputs and the factors influencing them can be explained in a way understandable to the intended audience.
+CP-03,Reproducibility,The AI system's results and behaviours can be consistently reproduced under the same conditions; development and test artefacts are traceable and auditable.
+CP-04,Safety,"The AI system does not endanger human life, health, property, or the environment; risks are identified, assessed, and controlled throughout the lifecycle."
+CP-05,Security,"The AI system is protected against unauthorised access, adversarial attacks, data poisoning, and other threats that could compromise its integrity or outputs."
+CP-06,Robustness,"The AI system maintains acceptable performance across varied, unexpected, or adversarial conditions; it degrades gracefully when inputs fall outside training distribution."
+CP-07,Fairness,"The AI system does not produce unjustified discriminatory outputs or outcomes across demographic groups; bias is identified, measured, and mitigated."
+CP-08,Data Governance,"Data used to develop, validate, and operate the AI system is managed with appropriate controls for quality, provenance, privacy, access, and lifecycle management."
+CP-09,Accountability,"Clear roles, responsibilities, and governance structures exist for the AI system's development, deployment, and operation; decisions are traceable and redress mechanisms exist."
+CP-10,Human Agency & Oversight,"Humans retain meaningful control over AI system decisions; appropriate oversight mechanisms, override capabilities, and escalation paths are in place."
+CP-11,"Inclusive Growth, Societal & Environmental Wellbeing","The AI system's development and deployment considers broader societal impacts including environmental sustainability, equitable access, and effects on communities beyond direct users."
+CP-12,Legal & Ethical Compliance,"The AI system's development and use comply with applicable laws, regulations, and ethical standards; prohibited uses are identified and enforced; regulatory obligations are tracked."

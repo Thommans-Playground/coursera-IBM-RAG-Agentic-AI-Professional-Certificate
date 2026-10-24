@@ -1,0 +1,33 @@
+id: ai-verify
+name: AI Verify Testing Framework for Traditional and Generative AI
+kind: TESTING_FRAMEWORK          # voluntary; process checks plus some technical tests; produces a self-assessment, not a certificate
+scope_level: PRODUCT
+version: "2025 edition (copyright 2025 IMDA)"
+publisher: Infocomm Media Development Authority (IMDA), Singapore; AI Verify Foundation
+levels: [principle, outcome, process]
+counts: {principle: 11, outcome: 88, process: 112}
+text_policy: PUBLIC              # published openly by IMDA; quoted here with attribution. Check the document's own licence before redistributing the full text
+as_of: 2026-10-24
+sources:
+  - id: aivtf-2025
+    title: AI Verify Testing Framework for Traditional and Generative AI
+    url: https://file.go.gov.sg/aivtf-pdf.pdf
+    role: authoritative text. 118-page PDF, parsed by position with tools/parse_ai_verify_pdf.py
+kinds: {GROUP: principle, OUTCOME: outcome statement, CONTROL: process check, TEST: process check that is carried out with technical tests}
+ids: "Principle 7 = ai-verify:7; Outcome 7.2 = ai-verify:7.2; Process 7.2.1 = ai-verify:7.2.1. No P prefix"
+facets:
+  ai_type: traditional / generative / traditional-and-generative, as tagged on each process
+  technical_test: yes for the five processes that use technical tests (2.1.1, 4.1.1, 6.1.1, 7.1.1, 7.2.1)
+evidence: evidence_expected.csv holds the evidence type and the framework's description of the documentary evidence for each process
+version_warning: >
+  The October 2023 NIST/IMDA crosswalk uses the 2023 numbering of this framework, which had a 12th group "Organisational
+  Considerations" and different process ids. Ids such as 1.2.2-1.2.4, 1.4.2, 3.13.1, 3.14.1, 4.5.3, 4.5.4, 7.4.2, 10.1.2 and 10.2.3
+  do not exist in the 2025 edition.
+statuses:
+  verified-parsed: parsed from the official PDF; not reviewed by a person
+known_gaps:
+  - principle descriptions parsed from the introduction pages; check principle 2 (no description found)
+  - process text of the five technical-test processes may have separate Traditional and Generative variants joined in one statement
+review_log:
+  - date: 2026-10-24
+    by: automated parse; counts match the ids found by scanning the PDF text (11/88/112). Not reviewed by a person

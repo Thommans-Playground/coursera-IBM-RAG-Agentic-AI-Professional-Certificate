@@ -1,0 +1,480 @@
+provision_id,facet,value,source
+nist-ai-rmf:GV-1.1,ai_actor,Governance and Oversight,NIST AI RMF Playbook
+nist-ai-rmf:GV-1.1,topic,Legal and Regulatory,NIST AI RMF Playbook
+nist-ai-rmf:GV-1.1,topic,Governance,NIST AI RMF Playbook
+nist-ai-rmf:GV-1.1,topic,AI Actor Training,NIST AI RMF Playbook
+nist-ai-rmf:GV-1.2,ai_actor,Governance and Oversight,NIST AI RMF Playbook
+nist-ai-rmf:GV-1.2,topic,Trustworthy Characteristics,NIST AI RMF Playbook
+nist-ai-rmf:GV-1.2,topic,Governance,NIST AI RMF Playbook
+nist-ai-rmf:GV-1.2,topic,Validity and Reliability,NIST AI RMF Playbook
+nist-ai-rmf:GV-1.2,topic,Safety,NIST AI RMF Playbook
+nist-ai-rmf:GV-1.2,topic,Secure and Resilient,NIST AI RMF Playbook
+nist-ai-rmf:GV-1.2,topic,Accountability and Transparency,NIST AI RMF Playbook
+nist-ai-rmf:GV-1.2,topic,Explainability and Interpretability,NIST AI RMF Playbook
+nist-ai-rmf:GV-1.2,topic,Privacy,NIST AI RMF Playbook
+nist-ai-rmf:GV-1.2,topic,Fairness and Bias,NIST AI RMF Playbook
+nist-ai-rmf:GV-1.3,ai_actor,Governance and Oversight,NIST AI RMF Playbook
+nist-ai-rmf:GV-1.3,topic,Risk Tolerance,NIST AI RMF Playbook
+nist-ai-rmf:GV-1.3,topic,Governance,NIST AI RMF Playbook
+nist-ai-rmf:GV-1.4,ai_actor,Governance and Oversight,NIST AI RMF Playbook
+nist-ai-rmf:GV-1.4,topic,Risk Management,NIST AI RMF Playbook
+nist-ai-rmf:GV-1.4,topic,Governance,NIST AI RMF Playbook
+nist-ai-rmf:GV-1.4,topic,Documentation,NIST AI RMF Playbook
+nist-ai-rmf:GV-1.5,ai_actor,Governance and Oversight,NIST AI RMF Playbook
+nist-ai-rmf:GV-1.5,ai_actor,Operation and Monitoring,NIST AI RMF Playbook
+nist-ai-rmf:GV-1.5,topic,Monitoring,NIST AI RMF Playbook
+nist-ai-rmf:GV-1.5,topic,Governance,NIST AI RMF Playbook
+nist-ai-rmf:GV-1.5,topic,Continual Improvement,NIST AI RMF Playbook
+nist-ai-rmf:GV-1.6,ai_actor,Governance and Oversight,NIST AI RMF Playbook
+nist-ai-rmf:GV-1.6,topic,Risk Management,NIST AI RMF Playbook
+nist-ai-rmf:GV-1.6,topic,Governance,NIST AI RMF Playbook
+nist-ai-rmf:GV-1.6,topic,Data,NIST AI RMF Playbook
+nist-ai-rmf:GV-1.6,topic,Documentation,NIST AI RMF Playbook
+nist-ai-rmf:GV-1.7,ai_actor,AI Deployment,NIST AI RMF Playbook
+nist-ai-rmf:GV-1.7,ai_actor,Operation and Monitoring,NIST AI RMF Playbook
+nist-ai-rmf:GV-1.7,topic,Decommission,NIST AI RMF Playbook
+nist-ai-rmf:GV-1.7,topic,Governance,NIST AI RMF Playbook
+nist-ai-rmf:GV-2.1,ai_actor,Governance and Oversight,NIST AI RMF Playbook
+nist-ai-rmf:GV-2.1,topic,Governance,NIST AI RMF Playbook
+nist-ai-rmf:GV-2.1,topic,Risk Culture,NIST AI RMF Playbook
+nist-ai-rmf:GV-2.2,ai_actor,Governance and Oversight,NIST AI RMF Playbook
+nist-ai-rmf:GV-2.2,topic,Governance,NIST AI RMF Playbook
+nist-ai-rmf:GV-2.2,topic,AI Actor Training,NIST AI RMF Playbook
+nist-ai-rmf:GV-2.3,ai_actor,Governance and Oversight,NIST AI RMF Playbook
+nist-ai-rmf:GV-2.3,topic,Governance,NIST AI RMF Playbook
+nist-ai-rmf:GV-2.3,topic,Risk Tolerance,NIST AI RMF Playbook
+nist-ai-rmf:GV-3.1,ai_actor,Governance and Oversight,NIST AI RMF Playbook
+nist-ai-rmf:GV-3.1,ai_actor,AI Design,NIST AI RMF Playbook
+nist-ai-rmf:GV-3.1,topic,Diversity,NIST AI RMF Playbook
+nist-ai-rmf:GV-3.1,topic,Interdisciplinarity,NIST AI RMF Playbook
+nist-ai-rmf:GV-3.1,topic,Governance,NIST AI RMF Playbook
+nist-ai-rmf:GV-3.2,ai_actor,AI Design,NIST AI RMF Playbook
+nist-ai-rmf:GV-3.2,topic,Human-AI teaming,NIST AI RMF Playbook
+nist-ai-rmf:GV-3.2,topic,Human oversight,NIST AI RMF Playbook
+nist-ai-rmf:GV-3.2,topic,Governance,NIST AI RMF Playbook
+nist-ai-rmf:GV-3.2,topic,AI Actor Training,NIST AI RMF Playbook
+nist-ai-rmf:GV-4.1,ai_actor,AI Design,NIST AI RMF Playbook
+nist-ai-rmf:GV-4.1,ai_actor,AI Development,NIST AI RMF Playbook
+nist-ai-rmf:GV-4.1,ai_actor,AI Deployment,NIST AI RMF Playbook
+nist-ai-rmf:GV-4.1,ai_actor,Operation and Monitoring,NIST AI RMF Playbook
+nist-ai-rmf:GV-4.1,topic,Risk Culture,NIST AI RMF Playbook
+nist-ai-rmf:GV-4.1,topic,Governance,NIST AI RMF Playbook
+nist-ai-rmf:GV-4.1,topic,Adversarial,NIST AI RMF Playbook
+nist-ai-rmf:GV-4.2,ai_actor,AI Design,NIST AI RMF Playbook
+nist-ai-rmf:GV-4.2,ai_actor,AI Development,NIST AI RMF Playbook
+nist-ai-rmf:GV-4.2,ai_actor,AI Deployment,NIST AI RMF Playbook
+nist-ai-rmf:GV-4.2,ai_actor,Operation and Monitoring,NIST AI RMF Playbook
+nist-ai-rmf:GV-4.2,topic,Risk Culture,NIST AI RMF Playbook
+nist-ai-rmf:GV-4.2,topic,Governance,NIST AI RMF Playbook
+nist-ai-rmf:GV-4.2,topic,Impact Assessment,NIST AI RMF Playbook
+nist-ai-rmf:GV-4.3,ai_actor,TEVV,NIST AI RMF Playbook
+nist-ai-rmf:GV-4.3,ai_actor,Operation and Monitoring,NIST AI RMF Playbook
+nist-ai-rmf:GV-4.3,ai_actor,Governance and Oversight,NIST AI RMF Playbook
+nist-ai-rmf:GV-4.3,ai_actor,Fairness and Bias,NIST AI RMF Playbook
+nist-ai-rmf:GV-4.3,topic,Risk Culture,NIST AI RMF Playbook
+nist-ai-rmf:GV-4.3,topic,Governance,NIST AI RMF Playbook
+nist-ai-rmf:GV-4.3,topic,AI Incidents,NIST AI RMF Playbook
+nist-ai-rmf:GV-4.3,topic,Impact Assessment,NIST AI RMF Playbook
+nist-ai-rmf:GV-4.3,topic,Drift,NIST AI RMF Playbook
+nist-ai-rmf:GV-4.3,topic,Fairness and Bias,NIST AI RMF Playbook
+nist-ai-rmf:GV-5.1,ai_actor,AI Design,NIST AI RMF Playbook
+nist-ai-rmf:GV-5.1,ai_actor,Governance and Oversight,NIST AI RMF Playbook
+nist-ai-rmf:GV-5.1,ai_actor,AI Impact Assessment,NIST AI RMF Playbook
+nist-ai-rmf:GV-5.1,ai_actor,Affected Individuals and Communities,NIST AI RMF Playbook
+nist-ai-rmf:GV-5.1,topic,Participation,NIST AI RMF Playbook
+nist-ai-rmf:GV-5.1,topic,Governance,NIST AI RMF Playbook
+nist-ai-rmf:GV-5.1,topic,Impact Assessment,NIST AI RMF Playbook
+nist-ai-rmf:GV-5.2,ai_actor,AI Impact Assessment,NIST AI RMF Playbook
+nist-ai-rmf:GV-5.2,ai_actor,Governance and Oversight,NIST AI RMF Playbook
+nist-ai-rmf:GV-5.2,ai_actor,Operation and Monitoring,NIST AI RMF Playbook
+nist-ai-rmf:GV-5.2,topic,Participation,NIST AI RMF Playbook
+nist-ai-rmf:GV-5.2,topic,Governance,NIST AI RMF Playbook
+nist-ai-rmf:GV-5.2,topic,Impact Assessment,NIST AI RMF Playbook
+nist-ai-rmf:GV-6.1,ai_actor,Third-party entities,NIST AI RMF Playbook
+nist-ai-rmf:GV-6.1,ai_actor,Operation and Monitoring,NIST AI RMF Playbook
+nist-ai-rmf:GV-6.1,ai_actor,Procurement,NIST AI RMF Playbook
+nist-ai-rmf:GV-6.1,topic,Third-party,NIST AI RMF Playbook
+nist-ai-rmf:GV-6.1,topic,Legal and Regulatory,NIST AI RMF Playbook
+nist-ai-rmf:GV-6.1,topic,Procurement,NIST AI RMF Playbook
+nist-ai-rmf:GV-6.1,topic,Supply Chain,NIST AI RMF Playbook
+nist-ai-rmf:GV-6.1,topic,Governance,NIST AI RMF Playbook
+nist-ai-rmf:GV-6.2,ai_actor,AI Deployment,NIST AI RMF Playbook
+nist-ai-rmf:GV-6.2,ai_actor,TEVV,NIST AI RMF Playbook
+nist-ai-rmf:GV-6.2,ai_actor,Operation and Monitoring,NIST AI RMF Playbook
+nist-ai-rmf:GV-6.2,ai_actor,Third-party entities,NIST AI RMF Playbook
+nist-ai-rmf:GV-6.2,topic,Third-party,NIST AI RMF Playbook
+nist-ai-rmf:GV-6.2,topic,Governance,NIST AI RMF Playbook
+nist-ai-rmf:GV-6.2,topic,Risk Management,NIST AI RMF Playbook
+nist-ai-rmf:GV-6.2,topic,Supply Chain,NIST AI RMF Playbook
+nist-ai-rmf:MP-1.1,topic,Socio-technical systems,NIST AI RMF Playbook
+nist-ai-rmf:MP-1.1,topic,Societal Values,NIST AI RMF Playbook
+nist-ai-rmf:MP-1.1,topic,Context of Use,NIST AI RMF Playbook
+nist-ai-rmf:MP-1.1,topic,Impact Assessment,NIST AI RMF Playbook
+nist-ai-rmf:MP-1.1,topic,TEVV,NIST AI RMF Playbook
+nist-ai-rmf:MP-1.1,topic,Trustworthy Characteristics,NIST AI RMF Playbook
+nist-ai-rmf:MP-1.1,topic,Validity and Reliability,NIST AI RMF Playbook
+nist-ai-rmf:MP-1.1,topic,Safety,NIST AI RMF Playbook
+nist-ai-rmf:MP-1.1,topic,Secure and Resilient,NIST AI RMF Playbook
+nist-ai-rmf:MP-1.1,topic,Accountability and Transparency,NIST AI RMF Playbook
+nist-ai-rmf:MP-1.1,topic,Explainability and Interpretability,NIST AI RMF Playbook
+nist-ai-rmf:MP-1.1,topic,Privacy,NIST AI RMF Playbook
+nist-ai-rmf:MP-1.1,topic,Fairness and Bias,NIST AI RMF Playbook
+nist-ai-rmf:MP-1.2,topic,Diversity,NIST AI RMF Playbook
+nist-ai-rmf:MP-1.2,topic,Interdisciplinarity,NIST AI RMF Playbook
+nist-ai-rmf:MP-1.2,topic,Socio-technical systems,NIST AI RMF Playbook
+nist-ai-rmf:MP-1.3,topic,Socio-technical systems,NIST AI RMF Playbook
+nist-ai-rmf:MP-1.3,topic,Societal Values,NIST AI RMF Playbook
+nist-ai-rmf:MP-1.4,topic,Context of Use,NIST AI RMF Playbook
+nist-ai-rmf:MP-1.5,topic,Risk Tolerance,NIST AI RMF Playbook
+nist-ai-rmf:MP-1.6,topic,Socio-technical systems,NIST AI RMF Playbook
+nist-ai-rmf:MP-1.6,topic,Impact Assessment,NIST AI RMF Playbook
+nist-ai-rmf:MP-1.6,topic,Documentation,NIST AI RMF Playbook
+nist-ai-rmf:MP-2.1,topic,Socio-technical systems,NIST AI RMF Playbook
+nist-ai-rmf:MP-2.2,topic,Limitations,NIST AI RMF Playbook
+nist-ai-rmf:MP-2.2,topic,Human oversight,NIST AI RMF Playbook
+nist-ai-rmf:MP-2.2,topic,Impact Assessment,NIST AI RMF Playbook
+nist-ai-rmf:MP-2.2,topic,Documentation,NIST AI RMF Playbook
+nist-ai-rmf:MP-2.3,ai_actor,AI Development,NIST AI RMF Playbook
+nist-ai-rmf:MP-2.3,ai_actor,TEVV,NIST AI RMF Playbook
+nist-ai-rmf:MP-2.3,ai_actor,Domain Experts,NIST AI RMF Playbook
+nist-ai-rmf:MP-2.3,topic,TEVV,NIST AI RMF Playbook
+nist-ai-rmf:MP-2.3,topic,Data,NIST AI RMF Playbook
+nist-ai-rmf:MP-2.3,topic,Impact Assessment,NIST AI RMF Playbook
+nist-ai-rmf:MP-2.3,topic,Limitations,NIST AI RMF Playbook
+nist-ai-rmf:MP-3.1,ai_actor,AI Development,NIST AI RMF Playbook
+nist-ai-rmf:MP-3.1,ai_actor,AI Deployment,NIST AI RMF Playbook
+nist-ai-rmf:MP-3.1,ai_actor,AI Impact Assessment,NIST AI RMF Playbook
+nist-ai-rmf:MP-3.1,topic,Socio-technical systems,NIST AI RMF Playbook
+nist-ai-rmf:MP-3.1,topic,Documentation,NIST AI RMF Playbook
+nist-ai-rmf:MP-3.2,ai_actor,AI Design,NIST AI RMF Playbook
+nist-ai-rmf:MP-3.2,ai_actor,AI Development,NIST AI RMF Playbook
+nist-ai-rmf:MP-3.2,ai_actor,Operation and Monitoring,NIST AI RMF Playbook
+nist-ai-rmf:MP-3.2,ai_actor,AI Design,NIST AI RMF Playbook
+nist-ai-rmf:MP-3.2,ai_actor,AI Impact Assessment,NIST AI RMF Playbook
+nist-ai-rmf:MP-3.2,topic,Impact Assessment,NIST AI RMF Playbook
+nist-ai-rmf:MP-3.2,topic,Trustworthy Characteristics,NIST AI RMF Playbook
+nist-ai-rmf:MP-3.2,topic,Validity and Reliability,NIST AI RMF Playbook
+nist-ai-rmf:MP-3.2,topic,Safety,NIST AI RMF Playbook
+nist-ai-rmf:MP-3.2,topic,Secure and Resilient,NIST AI RMF Playbook
+nist-ai-rmf:MP-3.2,topic,Accountability and Transparency,NIST AI RMF Playbook
+nist-ai-rmf:MP-3.2,topic,Explainability and Interpretability,NIST AI RMF Playbook
+nist-ai-rmf:MP-3.2,topic,Privacy,NIST AI RMF Playbook
+nist-ai-rmf:MP-3.2,topic,Fairness and Bias,NIST AI RMF Playbook
+nist-ai-rmf:MP-3.3,ai_actor,AI Design,NIST AI RMF Playbook
+nist-ai-rmf:MP-3.3,ai_actor,AI Development,NIST AI RMF Playbook
+nist-ai-rmf:MP-3.3,ai_actor,Human Factors,NIST AI RMF Playbook
+nist-ai-rmf:MP-3.3,topic,Context of Use,NIST AI RMF Playbook
+nist-ai-rmf:MP-3.3,topic,Documentation,NIST AI RMF Playbook
+nist-ai-rmf:MP-3.4,ai_actor,AI Design,NIST AI RMF Playbook
+nist-ai-rmf:MP-3.4,ai_actor,AI Development,NIST AI RMF Playbook
+nist-ai-rmf:MP-3.4,ai_actor,Human Factors,NIST AI RMF Playbook
+nist-ai-rmf:MP-3.4,ai_actor,End-Users,NIST AI RMF Playbook
+nist-ai-rmf:MP-3.4,ai_actor,Domain Experts,NIST AI RMF Playbook
+nist-ai-rmf:MP-3.4,ai_actor,Operation and Monitoring,NIST AI RMF Playbook
+nist-ai-rmf:MP-3.4,topic,Human-AI teaming,NIST AI RMF Playbook
+nist-ai-rmf:MP-3.5,ai_actor,Human Factors,NIST AI RMF Playbook
+nist-ai-rmf:MP-3.5,ai_actor,End-Users,NIST AI RMF Playbook
+nist-ai-rmf:MP-3.5,ai_actor,Domain Experts,NIST AI RMF Playbook
+nist-ai-rmf:MP-3.5,ai_actor,Operation and Monitoring,NIST AI RMF Playbook
+nist-ai-rmf:MP-3.5,ai_actor,AI Design,NIST AI RMF Playbook
+nist-ai-rmf:MP-3.5,topic,Human oversight,NIST AI RMF Playbook
+nist-ai-rmf:MP-4.1,ai_actor,Third-party entities,NIST AI RMF Playbook
+nist-ai-rmf:MP-4.1,ai_actor,Procurement,NIST AI RMF Playbook
+nist-ai-rmf:MP-4.1,ai_actor,Operation and Monitoring,NIST AI RMF Playbook
+nist-ai-rmf:MP-4.1,ai_actor,Governance and Oversight,NIST AI RMF Playbook
+nist-ai-rmf:MP-4.1,topic,Legal and Regulatory,NIST AI RMF Playbook
+nist-ai-rmf:MP-4.1,topic,Third-party,NIST AI RMF Playbook
+nist-ai-rmf:MP-4.1,topic,Pre-trained models,NIST AI RMF Playbook
+nist-ai-rmf:MP-4.1,topic,Supply Chain,NIST AI RMF Playbook
+nist-ai-rmf:MP-4.1,topic,Risk Tolerance,NIST AI RMF Playbook
+nist-ai-rmf:MP-4.1,topic,Risky Emergent Behavior,NIST AI RMF Playbook
+nist-ai-rmf:MP-4.2,ai_actor,AI Deployment,NIST AI RMF Playbook
+nist-ai-rmf:MP-4.2,ai_actor,TEVV,NIST AI RMF Playbook
+nist-ai-rmf:MP-4.2,ai_actor,Operation and Monitoring,NIST AI RMF Playbook
+nist-ai-rmf:MP-4.2,ai_actor,Third-party entities,NIST AI RMF Playbook
+nist-ai-rmf:MP-4.2,topic,Third-party,NIST AI RMF Playbook
+nist-ai-rmf:MP-4.2,topic,Pre-trained models,NIST AI RMF Playbook
+nist-ai-rmf:MP-5.1,ai_actor,AI Design,NIST AI RMF Playbook
+nist-ai-rmf:MP-5.1,ai_actor,AI Development,NIST AI RMF Playbook
+nist-ai-rmf:MP-5.1,ai_actor,AI Deployment,NIST AI RMF Playbook
+nist-ai-rmf:MP-5.1,ai_actor,AI Impact Assessment,NIST AI RMF Playbook
+nist-ai-rmf:MP-5.1,ai_actor,Operation and Monitoring,NIST AI RMF Playbook
+nist-ai-rmf:MP-5.1,ai_actor,Affected Individuals and Communities,NIST AI RMF Playbook
+nist-ai-rmf:MP-5.1,ai_actor,End-Users,NIST AI RMF Playbook
+nist-ai-rmf:MP-5.1,topic,Participation,NIST AI RMF Playbook
+nist-ai-rmf:MP-5.1,topic,Impact Assessment,NIST AI RMF Playbook
+nist-ai-rmf:MP-5.2,ai_actor,AI Design,NIST AI RMF Playbook
+nist-ai-rmf:MP-5.2,ai_actor,Human Factors,NIST AI RMF Playbook
+nist-ai-rmf:MP-5.2,ai_actor,AI Deployment,NIST AI RMF Playbook
+nist-ai-rmf:MP-5.2,ai_actor,AI Impact Assessment,NIST AI RMF Playbook
+nist-ai-rmf:MP-5.2,ai_actor,Operation and Monitoring,NIST AI RMF Playbook
+nist-ai-rmf:MP-5.2,ai_actor,Domain Experts,NIST AI RMF Playbook
+nist-ai-rmf:MP-5.2,ai_actor,Affected Individuals and Communities,NIST AI RMF Playbook
+nist-ai-rmf:MP-5.2,ai_actor,End-Users,NIST AI RMF Playbook
+nist-ai-rmf:MP-5.2,topic,Participation,NIST AI RMF Playbook
+nist-ai-rmf:MP-5.2,topic,Impact Assessment,NIST AI RMF Playbook
+nist-ai-rmf:MS-1.1,ai_actor,AI Development,NIST AI RMF Playbook
+nist-ai-rmf:MS-1.1,ai_actor,TEVV,NIST AI RMF Playbook
+nist-ai-rmf:MS-1.1,ai_actor,Domain Experts,NIST AI RMF Playbook
+nist-ai-rmf:MS-1.1,topic,Trustworthy Characteristics,NIST AI RMF Playbook
+nist-ai-rmf:MS-1.1,topic,Risk Assessment,NIST AI RMF Playbook
+nist-ai-rmf:MS-1.1,topic,Risky Emergent Behavior,NIST AI RMF Playbook
+nist-ai-rmf:MS-1.1,topic,TEVV,NIST AI RMF Playbook
+nist-ai-rmf:MS-1.1,topic,Validity and Reliability,NIST AI RMF Playbook
+nist-ai-rmf:MS-1.1,topic,Safety,NIST AI RMF Playbook
+nist-ai-rmf:MS-1.1,topic,Secure and Resilient,NIST AI RMF Playbook
+nist-ai-rmf:MS-1.1,topic,Accountability and Transparency,NIST AI RMF Playbook
+nist-ai-rmf:MS-1.1,topic,Explainability and Interpretability,NIST AI RMF Playbook
+nist-ai-rmf:MS-1.1,topic,Privacy,NIST AI RMF Playbook
+nist-ai-rmf:MS-1.1,topic,Fairness and Bias,NIST AI RMF Playbook
+nist-ai-rmf:MS-1.2,ai_actor,TEVV,NIST AI RMF Playbook
+nist-ai-rmf:MS-1.2,ai_actor,AI Impact Assessment,NIST AI RMF Playbook
+nist-ai-rmf:MS-1.2,ai_actor,AI Development,NIST AI RMF Playbook
+nist-ai-rmf:MS-1.2,ai_actor,AI Deployment,NIST AI RMF Playbook
+nist-ai-rmf:MS-1.2,ai_actor,Affected Individuals and Communities,NIST AI RMF Playbook
+nist-ai-rmf:MS-1.2,topic,Impact Assessment,NIST AI RMF Playbook
+nist-ai-rmf:MS-1.2,topic,TEVV,NIST AI RMF Playbook
+nist-ai-rmf:MS-1.2,topic,Context of Use,NIST AI RMF Playbook
+nist-ai-rmf:MS-1.3,ai_actor,TEVV,NIST AI RMF Playbook
+nist-ai-rmf:MS-1.3,ai_actor,AI Impact Assessment,NIST AI RMF Playbook
+nist-ai-rmf:MS-1.3,ai_actor,AI Development,NIST AI RMF Playbook
+nist-ai-rmf:MS-1.3,ai_actor,AI Deployment,NIST AI RMF Playbook
+nist-ai-rmf:MS-1.3,ai_actor,Affected Individuals and Communities,NIST AI RMF Playbook
+nist-ai-rmf:MS-1.3,ai_actor,Domain Experts,NIST AI RMF Playbook
+nist-ai-rmf:MS-1.3,ai_actor,End-Users,NIST AI RMF Playbook
+nist-ai-rmf:MS-1.3,ai_actor,Operation and Monitoring,NIST AI RMF Playbook
+nist-ai-rmf:MS-1.3,topic,Participation,NIST AI RMF Playbook
+nist-ai-rmf:MS-1.3,topic,Impact Assessment,NIST AI RMF Playbook
+nist-ai-rmf:MS-1.3,topic,Context of Use,NIST AI RMF Playbook
+nist-ai-rmf:MS-2.1,ai_actor,TEVV,NIST AI RMF Playbook
+nist-ai-rmf:MS-2.1,topic,TEVV,NIST AI RMF Playbook
+nist-ai-rmf:MS-2.1,topic,Documentation,NIST AI RMF Playbook
+nist-ai-rmf:MS-2.1,topic,Validity and Reliability,NIST AI RMF Playbook
+nist-ai-rmf:MS-2.2,ai_actor,TEVV,NIST AI RMF Playbook
+nist-ai-rmf:MS-2.2,ai_actor,Human Factors,NIST AI RMF Playbook
+nist-ai-rmf:MS-2.2,ai_actor,AI Development,NIST AI RMF Playbook
+nist-ai-rmf:MS-2.2,topic,Data,NIST AI RMF Playbook
+nist-ai-rmf:MS-2.2,topic,Human Subjects Protection,NIST AI RMF Playbook
+nist-ai-rmf:MS-2.3,ai_actor,TEVV,NIST AI RMF Playbook
+nist-ai-rmf:MS-2.3,ai_actor,AI Deployment,NIST AI RMF Playbook
+nist-ai-rmf:MS-2.3,topic,TEVV,NIST AI RMF Playbook
+nist-ai-rmf:MS-2.3,topic,Impact Assessment,NIST AI RMF Playbook
+nist-ai-rmf:MS-2.4,ai_actor,AI Deployment,NIST AI RMF Playbook
+nist-ai-rmf:MS-2.4,ai_actor,TEVV,NIST AI RMF Playbook
+nist-ai-rmf:MS-2.4,topic,TEVV,NIST AI RMF Playbook
+nist-ai-rmf:MS-2.4,topic,Monitoring,NIST AI RMF Playbook
+nist-ai-rmf:MS-2.4,topic,Drift,NIST AI RMF Playbook
+nist-ai-rmf:MS-2.5,ai_actor,TEVV,NIST AI RMF Playbook
+nist-ai-rmf:MS-2.5,ai_actor,Domain Experts,NIST AI RMF Playbook
+nist-ai-rmf:MS-2.5,topic,TEVV,NIST AI RMF Playbook
+nist-ai-rmf:MS-2.5,topic,Validity and Reliability,NIST AI RMF Playbook
+nist-ai-rmf:MS-2.5,topic,Trustworthy Characteristics,NIST AI RMF Playbook
+nist-ai-rmf:MS-2.5,topic,Data,NIST AI RMF Playbook
+nist-ai-rmf:MS-2.6,ai_actor,TEVV,NIST AI RMF Playbook
+nist-ai-rmf:MS-2.6,ai_actor,Domain Experts,NIST AI RMF Playbook
+nist-ai-rmf:MS-2.6,ai_actor,Operation and Monitoring,NIST AI RMF Playbook
+nist-ai-rmf:MS-2.6,ai_actor,AI Impact Assessment,NIST AI RMF Playbook
+nist-ai-rmf:MS-2.6,ai_actor,AI Deployment,NIST AI RMF Playbook
+nist-ai-rmf:MS-2.6,topic,TEVV,NIST AI RMF Playbook
+nist-ai-rmf:MS-2.6,topic,Safety,NIST AI RMF Playbook
+nist-ai-rmf:MS-2.6,topic,Trustworthy Characteristics,NIST AI RMF Playbook
+nist-ai-rmf:MS-2.6,topic,Context of Use,NIST AI RMF Playbook
+nist-ai-rmf:MS-2.7,ai_actor,TEVV,NIST AI RMF Playbook
+nist-ai-rmf:MS-2.7,ai_actor,Domain Experts,NIST AI RMF Playbook
+nist-ai-rmf:MS-2.7,ai_actor,Operation and Monitoring,NIST AI RMF Playbook
+nist-ai-rmf:MS-2.7,ai_actor,AI Impact Assessment,NIST AI RMF Playbook
+nist-ai-rmf:MS-2.7,ai_actor,AI Deployment,NIST AI RMF Playbook
+nist-ai-rmf:MS-2.7,topic,TEVV,NIST AI RMF Playbook
+nist-ai-rmf:MS-2.7,topic,Secure and Resilient,NIST AI RMF Playbook
+nist-ai-rmf:MS-2.7,topic,Trustworthy Characteristics,NIST AI RMF Playbook
+nist-ai-rmf:MS-2.7,topic,Adversarial,NIST AI RMF Playbook
+nist-ai-rmf:MS-2.7,topic,Risky Emergent Behavior,NIST AI RMF Playbook
+nist-ai-rmf:MS-2.8,ai_actor,TEVV,NIST AI RMF Playbook
+nist-ai-rmf:MS-2.8,ai_actor,Domain Experts,NIST AI RMF Playbook
+nist-ai-rmf:MS-2.8,ai_actor,Operation and Monitoring,NIST AI RMF Playbook
+nist-ai-rmf:MS-2.8,ai_actor,AI Impact Assessment,NIST AI RMF Playbook
+nist-ai-rmf:MS-2.8,ai_actor,AI Deployment,NIST AI RMF Playbook
+nist-ai-rmf:MS-2.8,topic,TEVV,NIST AI RMF Playbook
+nist-ai-rmf:MS-2.8,topic,Accountability and Transparency,NIST AI RMF Playbook
+nist-ai-rmf:MS-2.8,topic,Trustworthy Characteristics,NIST AI RMF Playbook
+nist-ai-rmf:MS-2.9,ai_actor,TEVV,NIST AI RMF Playbook
+nist-ai-rmf:MS-2.9,ai_actor,Domain Experts,NIST AI RMF Playbook
+nist-ai-rmf:MS-2.9,ai_actor,Operation and Monitoring,NIST AI RMF Playbook
+nist-ai-rmf:MS-2.9,ai_actor,AI Impact Assessment,NIST AI RMF Playbook
+nist-ai-rmf:MS-2.9,ai_actor,AI Deployment,NIST AI RMF Playbook
+nist-ai-rmf:MS-2.9,ai_actor,End-Users,NIST AI RMF Playbook
+nist-ai-rmf:MS-2.9,topic,TEVV,NIST AI RMF Playbook
+nist-ai-rmf:MS-2.9,topic,Explainability and Interpretability,NIST AI RMF Playbook
+nist-ai-rmf:MS-2.9,topic,Trustworthy Characteristics,NIST AI RMF Playbook
+nist-ai-rmf:MS-2.10,ai_actor,TEVV,NIST AI RMF Playbook
+nist-ai-rmf:MS-2.10,ai_actor,Domain Experts,NIST AI RMF Playbook
+nist-ai-rmf:MS-2.10,ai_actor,Operation and Monitoring,NIST AI RMF Playbook
+nist-ai-rmf:MS-2.10,ai_actor,AI Impact Assessment,NIST AI RMF Playbook
+nist-ai-rmf:MS-2.10,ai_actor,AI Deployment,NIST AI RMF Playbook
+nist-ai-rmf:MS-2.10,ai_actor,End-Users,NIST AI RMF Playbook
+nist-ai-rmf:MS-2.10,topic,TEVV,NIST AI RMF Playbook
+nist-ai-rmf:MS-2.10,topic,Privacy,NIST AI RMF Playbook
+nist-ai-rmf:MS-2.10,topic,Trustworthy Characteristics,NIST AI RMF Playbook
+nist-ai-rmf:MS-2.11,ai_actor,TEVV,NIST AI RMF Playbook
+nist-ai-rmf:MS-2.11,ai_actor,Domain Experts,NIST AI RMF Playbook
+nist-ai-rmf:MS-2.11,ai_actor,Operation and Monitoring,NIST AI RMF Playbook
+nist-ai-rmf:MS-2.11,ai_actor,AI Impact Assessment,NIST AI RMF Playbook
+nist-ai-rmf:MS-2.11,ai_actor,AI Deployment,NIST AI RMF Playbook
+nist-ai-rmf:MS-2.11,ai_actor,End-Users,NIST AI RMF Playbook
+nist-ai-rmf:MS-2.11,ai_actor,Affected Individuals and Communities,NIST AI RMF Playbook
+nist-ai-rmf:MS-2.11,topic,TEVV,NIST AI RMF Playbook
+nist-ai-rmf:MS-2.11,topic,Fairness and Bias,NIST AI RMF Playbook
+nist-ai-rmf:MS-2.11,topic,Trustworthy Characteristics,NIST AI RMF Playbook
+nist-ai-rmf:MS-2.12,ai_actor,TEVV,NIST AI RMF Playbook
+nist-ai-rmf:MS-2.12,ai_actor,Domain Experts,NIST AI RMF Playbook
+nist-ai-rmf:MS-2.12,ai_actor,Operation and Monitoring,NIST AI RMF Playbook
+nist-ai-rmf:MS-2.12,ai_actor,AI Impact Assessment,NIST AI RMF Playbook
+nist-ai-rmf:MS-2.12,ai_actor,AI Deployment,NIST AI RMF Playbook
+nist-ai-rmf:MS-2.12,topic,TEVV,NIST AI RMF Playbook
+nist-ai-rmf:MS-2.12,topic,Environmental Impact,NIST AI RMF Playbook
+nist-ai-rmf:MS-2.13,ai_actor,TEVV,NIST AI RMF Playbook
+nist-ai-rmf:MS-2.13,ai_actor,AI Deployment,NIST AI RMF Playbook
+nist-ai-rmf:MS-2.13,ai_actor,Operation and Monitoring,NIST AI RMF Playbook
+nist-ai-rmf:MS-2.13,topic,TEVV,NIST AI RMF Playbook
+nist-ai-rmf:MS-2.13,topic,Effectiveness,NIST AI RMF Playbook
+nist-ai-rmf:MS-3.1,ai_actor,TEVV,NIST AI RMF Playbook
+nist-ai-rmf:MS-3.1,ai_actor,AI Impact Assessment,NIST AI RMF Playbook
+nist-ai-rmf:MS-3.1,ai_actor,Operation and Monitoring,NIST AI RMF Playbook
+nist-ai-rmf:MS-3.1,topic,TEVV,NIST AI RMF Playbook
+nist-ai-rmf:MS-3.1,topic,Monitoring,NIST AI RMF Playbook
+nist-ai-rmf:MS-3.1,topic,Continual Improvement,NIST AI RMF Playbook
+nist-ai-rmf:MS-3.2,ai_actor,TEVV,NIST AI RMF Playbook
+nist-ai-rmf:MS-3.2,ai_actor,Domain Experts,NIST AI RMF Playbook
+nist-ai-rmf:MS-3.2,ai_actor,AI Impact Assessment,NIST AI RMF Playbook
+nist-ai-rmf:MS-3.2,ai_actor,Operation and Monitoring,NIST AI RMF Playbook
+nist-ai-rmf:MS-3.2,topic,Monitoring,NIST AI RMF Playbook
+nist-ai-rmf:MS-3.2,topic,Continual Improvement,NIST AI RMF Playbook
+nist-ai-rmf:MS-3.3,ai_actor,TEVV,NIST AI RMF Playbook
+nist-ai-rmf:MS-3.3,ai_actor,AI Deployment,NIST AI RMF Playbook
+nist-ai-rmf:MS-3.3,ai_actor,Operation and Monitoring,NIST AI RMF Playbook
+nist-ai-rmf:MS-3.3,ai_actor,End-Users,NIST AI RMF Playbook
+nist-ai-rmf:MS-3.3,ai_actor,Affected Individuals and Communities,NIST AI RMF Playbook
+nist-ai-rmf:MS-3.3,topic,Participation,NIST AI RMF Playbook
+nist-ai-rmf:MS-3.3,topic,Contestability,NIST AI RMF Playbook
+nist-ai-rmf:MS-3.3,topic,TEVV,NIST AI RMF Playbook
+nist-ai-rmf:MS-3.3,topic,Impact Assessment,NIST AI RMF Playbook
+nist-ai-rmf:MS-4.1,ai_actor,TEVV,NIST AI RMF Playbook
+nist-ai-rmf:MS-4.1,ai_actor,AI Deployment,NIST AI RMF Playbook
+nist-ai-rmf:MS-4.1,ai_actor,Operation and Monitoring,NIST AI RMF Playbook
+nist-ai-rmf:MS-4.1,ai_actor,End-Users,NIST AI RMF Playbook
+nist-ai-rmf:MS-4.1,ai_actor,Affected Individuals and Communities,NIST AI RMF Playbook
+nist-ai-rmf:MS-4.1,topic,TEVV,NIST AI RMF Playbook
+nist-ai-rmf:MS-4.1,topic,Participation,NIST AI RMF Playbook
+nist-ai-rmf:MS-4.1,topic,Context of Use,NIST AI RMF Playbook
+nist-ai-rmf:MS-4.2,ai_actor,TEVV,NIST AI RMF Playbook
+nist-ai-rmf:MS-4.2,ai_actor,AI Deployment,NIST AI RMF Playbook
+nist-ai-rmf:MS-4.2,ai_actor,Domain Experts,NIST AI RMF Playbook
+nist-ai-rmf:MS-4.2,ai_actor,Operation and Monitoring,NIST AI RMF Playbook
+nist-ai-rmf:MS-4.2,ai_actor,End-Users,NIST AI RMF Playbook
+nist-ai-rmf:MS-4.2,topic,TEVV,NIST AI RMF Playbook
+nist-ai-rmf:MS-4.2,topic,Participation,NIST AI RMF Playbook
+nist-ai-rmf:MS-4.2,topic,Trustworthy Characteristics,NIST AI RMF Playbook
+nist-ai-rmf:MS-4.2,topic,Validity and Reliability,NIST AI RMF Playbook
+nist-ai-rmf:MS-4.2,topic,Safety,NIST AI RMF Playbook
+nist-ai-rmf:MS-4.2,topic,Secure and Resilient,NIST AI RMF Playbook
+nist-ai-rmf:MS-4.2,topic,Accountability and Transparency,NIST AI RMF Playbook
+nist-ai-rmf:MS-4.2,topic,Explainability and Interpretability,NIST AI RMF Playbook
+nist-ai-rmf:MS-4.2,topic,Privacy,NIST AI RMF Playbook
+nist-ai-rmf:MS-4.2,topic,Fairness and Bias,NIST AI RMF Playbook
+nist-ai-rmf:MS-4.3,ai_actor,TEVV,NIST AI RMF Playbook
+nist-ai-rmf:MS-4.3,ai_actor,AI Deployment,NIST AI RMF Playbook
+nist-ai-rmf:MS-4.3,ai_actor,Operation and Monitoring,NIST AI RMF Playbook
+nist-ai-rmf:MS-4.3,ai_actor,End-Users,NIST AI RMF Playbook
+nist-ai-rmf:MS-4.3,ai_actor,Affected Individuals and Communities,NIST AI RMF Playbook
+nist-ai-rmf:MS-4.3,topic,TEVV,NIST AI RMF Playbook
+nist-ai-rmf:MS-4.3,topic,Participation,NIST AI RMF Playbook
+nist-ai-rmf:MS-4.3,topic,Trustworthy Characteristics,NIST AI RMF Playbook
+nist-ai-rmf:MS-4.3,topic,Validity and Reliability,NIST AI RMF Playbook
+nist-ai-rmf:MS-4.3,topic,Safety,NIST AI RMF Playbook
+nist-ai-rmf:MS-4.3,topic,Secure and Resilient,NIST AI RMF Playbook
+nist-ai-rmf:MS-4.3,topic,Accountability and Transparency,NIST AI RMF Playbook
+nist-ai-rmf:MS-4.3,topic,Explainability and Interpretability,NIST AI RMF Playbook
+nist-ai-rmf:MS-4.3,topic,Privacy,NIST AI RMF Playbook
+nist-ai-rmf:MS-4.3,topic,Fairness and Bias,NIST AI RMF Playbook
+nist-ai-rmf:MG-1.1,ai_actor,AI Deployment,NIST AI RMF Playbook
+nist-ai-rmf:MG-1.1,ai_actor,Operation and Monitoring,NIST AI RMF Playbook
+nist-ai-rmf:MG-1.1,ai_actor,AI Impact Assessment,NIST AI RMF Playbook
+nist-ai-rmf:MG-1.1,topic,AI Deployment,NIST AI RMF Playbook
+nist-ai-rmf:MG-1.1,topic,Risk Assessment,NIST AI RMF Playbook
+nist-ai-rmf:MG-1.2,ai_actor,AI Deployment,NIST AI RMF Playbook
+nist-ai-rmf:MG-1.2,ai_actor,Operation and Monitoring,NIST AI RMF Playbook
+nist-ai-rmf:MG-1.2,ai_actor,AI Impact Assessment,NIST AI RMF Playbook
+nist-ai-rmf:MG-1.2,topic,Risk Tolerance,NIST AI RMF Playbook
+nist-ai-rmf:MG-1.3,ai_actor,AI Deployment,NIST AI RMF Playbook
+nist-ai-rmf:MG-1.3,ai_actor,Operation and Monitoring,NIST AI RMF Playbook
+nist-ai-rmf:MG-1.3,ai_actor,AI Impact Assessment,NIST AI RMF Playbook
+nist-ai-rmf:MG-1.3,topic,Legal and Regulatory,NIST AI RMF Playbook
+nist-ai-rmf:MG-1.3,topic,Risk Tolerance,NIST AI RMF Playbook
+nist-ai-rmf:MG-1.4,ai_actor,AI Deployment,NIST AI RMF Playbook
+nist-ai-rmf:MG-1.4,ai_actor,Operation and Monitoring,NIST AI RMF Playbook
+nist-ai-rmf:MG-1.4,ai_actor,AI Impact Assessment,NIST AI RMF Playbook
+nist-ai-rmf:MG-1.4,topic,Risk Response,NIST AI RMF Playbook
+nist-ai-rmf:MG-2.1,ai_actor,AI Deployment,NIST AI RMF Playbook
+nist-ai-rmf:MG-2.1,ai_actor,Operation and Monitoring,NIST AI RMF Playbook
+nist-ai-rmf:MG-2.1,ai_actor,AI Impact Assessment,NIST AI RMF Playbook
+nist-ai-rmf:MG-2.1,ai_actor,Governance and Oversight,NIST AI RMF Playbook
+nist-ai-rmf:MG-2.1,topic,Risk Tolerance,NIST AI RMF Playbook
+nist-ai-rmf:MG-2.1,topic,Trade-offs,NIST AI RMF Playbook
+nist-ai-rmf:MG-2.2,ai_actor,AI Deployment,NIST AI RMF Playbook
+nist-ai-rmf:MG-2.2,ai_actor,Operation and Monitoring,NIST AI RMF Playbook
+nist-ai-rmf:MG-2.2,ai_actor,AI Impact Assessment,NIST AI RMF Playbook
+nist-ai-rmf:MG-2.2,ai_actor,Governance and Oversight,NIST AI RMF Playbook
+nist-ai-rmf:MG-2.2,topic,AI Deployment,NIST AI RMF Playbook
+nist-ai-rmf:MG-2.2,topic,Drift,NIST AI RMF Playbook
+nist-ai-rmf:MG-2.2,topic,Societal Values,NIST AI RMF Playbook
+nist-ai-rmf:MG-2.3,ai_actor,AI Deployment,NIST AI RMF Playbook
+nist-ai-rmf:MG-2.3,ai_actor,Operation and Monitoring,NIST AI RMF Playbook
+nist-ai-rmf:MG-2.3,topic,Risk Response,NIST AI RMF Playbook
+nist-ai-rmf:MG-2.4,ai_actor,AI Deployment,NIST AI RMF Playbook
+nist-ai-rmf:MG-2.4,ai_actor,Operation and Monitoring,NIST AI RMF Playbook
+nist-ai-rmf:MG-2.4,ai_actor,Governance and Oversight,NIST AI RMF Playbook
+nist-ai-rmf:MG-2.4,topic,Risk Response,NIST AI RMF Playbook
+nist-ai-rmf:MG-2.4,topic,Decommission,NIST AI RMF Playbook
+nist-ai-rmf:MG-2.4,topic,Risky Emergent Behavior,NIST AI RMF Playbook
+nist-ai-rmf:MG-3.1,ai_actor,Third-party entities,NIST AI RMF Playbook
+nist-ai-rmf:MG-3.1,ai_actor,Operation and Monitoring,NIST AI RMF Playbook
+nist-ai-rmf:MG-3.1,ai_actor,AI Deployment,NIST AI RMF Playbook
+nist-ai-rmf:MG-3.1,topic,Third-party,NIST AI RMF Playbook
+nist-ai-rmf:MG-3.1,topic,Supply Chain,NIST AI RMF Playbook
+nist-ai-rmf:MG-3.2,ai_actor,Third-party entities,NIST AI RMF Playbook
+nist-ai-rmf:MG-3.2,ai_actor,Operation and Monitoring,NIST AI RMF Playbook
+nist-ai-rmf:MG-3.2,ai_actor,AI Deployment,NIST AI RMF Playbook
+nist-ai-rmf:MG-3.2,topic,Pre-trained models,NIST AI RMF Playbook
+nist-ai-rmf:MG-3.2,topic,Monitoring,NIST AI RMF Playbook
+nist-ai-rmf:MG-4.1,ai_actor,AI Deployment,NIST AI RMF Playbook
+nist-ai-rmf:MG-4.1,ai_actor,Operation and Monitoring,NIST AI RMF Playbook
+nist-ai-rmf:MG-4.1,ai_actor,End-Users,NIST AI RMF Playbook
+nist-ai-rmf:MG-4.1,ai_actor,Human Factors,NIST AI RMF Playbook
+nist-ai-rmf:MG-4.1,ai_actor,Domain Experts,NIST AI RMF Playbook
+nist-ai-rmf:MG-4.1,ai_actor,Affected Individuals and Communities,NIST AI RMF Playbook
+nist-ai-rmf:MG-4.1,topic,Monitoring,NIST AI RMF Playbook
+nist-ai-rmf:MG-4.1,topic,Participation,NIST AI RMF Playbook
+nist-ai-rmf:MG-4.1,topic,AI Deployment,NIST AI RMF Playbook
+nist-ai-rmf:MG-4.1,topic,AI Incidents,NIST AI RMF Playbook
+nist-ai-rmf:MG-4.1,topic,Risk Response,NIST AI RMF Playbook
+nist-ai-rmf:MG-4.1,topic,Adversarial,NIST AI RMF Playbook
+nist-ai-rmf:MG-4.1,topic,Risky Emergent Behavior,NIST AI RMF Playbook
+nist-ai-rmf:MG-4.2,ai_actor,TEVV,NIST AI RMF Playbook
+nist-ai-rmf:MG-4.2,ai_actor,AI Design,NIST AI RMF Playbook
+nist-ai-rmf:MG-4.2,ai_actor,AI Development,NIST AI RMF Playbook
+nist-ai-rmf:MG-4.2,ai_actor,AI Deployment,NIST AI RMF Playbook
+nist-ai-rmf:MG-4.2,ai_actor,Operation and Monitoring,NIST AI RMF Playbook
+nist-ai-rmf:MG-4.2,ai_actor,End-Users,NIST AI RMF Playbook
+nist-ai-rmf:MG-4.2,ai_actor,Affected Individuals and Communities,NIST AI RMF Playbook
+nist-ai-rmf:MG-4.2,topic,Monitoring,NIST AI RMF Playbook
+nist-ai-rmf:MG-4.2,topic,Impact Assessment,NIST AI RMF Playbook
+nist-ai-rmf:MG-4.2,topic,Risk Assessment,NIST AI RMF Playbook
+nist-ai-rmf:MG-4.2,topic,Continual Improvement,NIST AI RMF Playbook
+nist-ai-rmf:MG-4.3,ai_actor,AI Deployment,NIST AI RMF Playbook
+nist-ai-rmf:MG-4.3,ai_actor,Operation and Monitoring,NIST AI RMF Playbook
+nist-ai-rmf:MG-4.3,ai_actor,End-Users,NIST AI RMF Playbook
+nist-ai-rmf:MG-4.3,ai_actor,Human Factors,NIST AI RMF Playbook
+nist-ai-rmf:MG-4.3,ai_actor,Domain Experts,NIST AI RMF Playbook
+nist-ai-rmf:MG-4.3,ai_actor,Affected Individuals and Communities,NIST AI RMF Playbook
+nist-ai-rmf:MG-4.3,topic,AI Incidents,NIST AI RMF Playbook
+nist-ai-rmf:MG-4.3,topic,Monitoring,NIST AI RMF Playbook
