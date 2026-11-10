@@ -1092,3 +1092,549 @@ We will:
 6. Refactor the design without introducing ChromaDB yet.
 
 This will establish the core architectural pattern before adding external infrastructure.
+
+
+
+---
+title: "Workshop 01 - Employee Search: DDD, Hexagonal Architecture and TDD"
+tags: [python, ddd, hexagonal-architecture, tdd, uv, chromadb, docker, workshop]
+status: in-progress
+---
+
+# Workshop 01 — Employee Search: DDD, Hexagonal Architecture and TDD
+
+> [!info] Scope
+> **Hands-on Part 1:** Initialize a Python project with `uv`, derive domain rules from requirements, write failing tests, implement an `Employee` entity, and verify it. ChromaDB, FastAPI and Docker Compose are **planned for later milestones**, not prerequisites for the first tests.
+>
+> **Reference exercise:** IBM Coursera, *Similarity Search on Employee Records using Python and Chroma DB*. The employee-search use case comes from the lab; the DDD/TDD architecture and implementation plan are extensions for this workshop.
+
+## Contents
+
+- [[#1. Learning roadmap]]
+- [[#2. Problem and requirements]]
+- [[#3. Domain discovery (DDD)]]
+- [[#4. Hexagonal architecture]]
+- [[#5. TDD approach]]
+- [[#6. Hands-on project setup]]
+- [[#7. RED — write tests first]]
+- [[#8. GREEN — implement the entity]]
+- [[#9. REFACTOR and verify]]
+- [[#10. Future ChromaDB retrieval flow]]
+- [[#11. Future Docker Compose deployment]]
+- [[#12. Milestones and definition of done]]
+
+## 1. Learning roadmap
+
+```mermaid
+flowchart TD
+    R["Requirements and acceptance criteria"] --> D["Domain-Driven Design"]
+    D --> H["Hexagonal Architecture"]
+    H --> T["Test-Driven Development"]
+    T --> P["Python project with uv"]
+    P --> U["Application use cases"]
+    U --> C["ChromaDB adapter"]
+    C --> A["FastAPI adapter"]
+    A --> DC["Docker Compose"]
+    DC --> IT["Integration and acceptance tests"]
+    IT --> M["Portable database adapters"]
+```
+
+**This session's goal:** complete the domain entity and its unit tests without any database running.
+
+## 2. Problem and requirements
+
+The system supports employee discovery. A record has an ID, name, department, role, experience, skills and location. Future search will support natural-language similarity and exact metadata constraints.
+
+| ID | Requirement | Verification |
+|---|---|---|
+| REQ-001 | Register a valid employee | A valid employee can be constructed now; persistence is tested later |
+| REQ-002 | Reject invalid employee data | Empty ID/name and negative experience raise errors |
+| REQ-003 | Search semantically | Ranked results are returned by a future search adapter |
+| REQ-004 | Filter by department | Every result has the requested department |
+| REQ-005 | Filter by experience | Every result meets the minimum experience |
+| REQ-006 | Delete an employee | Deleted employee does not appear in future searches |
+| REQ-007 | Persist indexed records | Data remains after ChromaDB container restart |
+
+### Requirements traceability
+
+```mermaid
+flowchart TD
+    R["REQ-002: Reject invalid employee data"] --> AC["Acceptance criteria"]
+    AC --> A["Empty ID rejected"]
+    AC --> B["Empty name rejected"]
+    AC --> C["Negative experience rejected"]
+    AC --> D["Zero experience accepted"]
+    A --> UT["Unit tests"]
+    B --> UT
+    C --> UT
+    D --> UT
+    UT --> E["Employee domain entity"]
+    E --> V["Verified behavior"]
+```
+
+### Example acceptance criterion
+
+```gherkin
+Feature: Employee validation
+  Scenario: Reject negative experience
+    Given employee details with -1 years of experience
+    When an Employee is constructed
+    Then construction fails with a validation error
+```
+
+> [!important] Separation of responsibilities
+> The entity validates whether *one employee* is valid. The repository will later enforce whether an employee ID is already used by *another employee*. Entity construction alone cannot guarantee global ID uniqueness.
+
+## 3. Domain discovery (DDD)
+
+**Domain:** Employee Discovery. **Bounded context:** the part of the system responsible for registering and finding employees.
+
+```mermaid
+flowchart TB
+    REQ["Requirements"] --> UC["Use cases"]
+    UC --> N["Nouns: Employee, Skill, Experience"]
+    UC --> V["Verbs: Register, Search, Delete"]
+    UC --> I["Invariants: ID/name required; experience nonnegative"]
+    N --> DM["Domain model"]
+    V --> DM
+    I --> DM
+    DM --> BC["Employee Discovery bounded context"]
+```
+
+### Entity, value object and invariant
+
+```mermaid
+flowchart TD
+    M["Domain model"] --> E["Entity: Employee"]
+    M --> VO["Possible value objects: EmployeeId, Experience"]
+    M --> INV["Invariants"]
+    E --> ID["Identity persists as details change"]
+    VO --> VALUE["Compared by value rather than identity"]
+    INV --> RULES["Valid ID, valid name, experience >= 0"]
+```
+
+We will **not** create separate value-object classes yet. They are options for future refactoring if requirements warrant them.
+
+### Domain model
+
+```mermaid
+classDiagram
+    class Employee {
+        +str id
+        +str name
+        +str department
+        +str role
+        +int experience
+        +tuple skills
+        +str location
+        +__post_init__()
+    }
+    class DomainInvariants {
+        <<rules>>
+        +id must not be blank
+        +name must not be blank
+        +experience must be nonnegative
+    }
+    Employee ..> DomainInvariants : enforces
+```
+
+### Construction lifecycle
+
+```mermaid
+flowchart TD
+    A["Construct Employee"] --> B["Initialize fields"]
+    B --> C["Run __post_init__"]
+    C --> D{"ID nonblank?"}
+    D -->|No| X["Raise ValueError"]
+    D -->|Yes| E{"Name nonblank?"}
+    E -->|No| X
+    E -->|Yes| F{"Experience >= 0?"}
+    F -->|No| X
+    F -->|Yes| G["Valid Employee"]
+```
+
+## 4. Hexagonal architecture
+
+The domain describes the business. Application use cases orchestrate operations. Ports define required capabilities. Adapters connect external technologies.
+
+```mermaid
+flowchart TB
+    CLIENT["HTTP client"] --> API["FastAPI inbound adapter"]
+    subgraph CORE["Application core"]
+        REG["RegisterEmployee use case"] --> RP["EmployeeRepository port"]
+        SEARCH["SearchEmployees use case"] --> SP["EmployeeSearch port"]
+        REG --> EMP["Employee domain entity"]
+        SEARCH --> EMP
+    end
+    API --> REG
+    API --> SEARCH
+    PG["PostgreSQL repository adapter"] -. implements .-> RP
+    CH["ChromaDB search adapter"] -. implements .-> SP
+    PG --> DB1[("PostgreSQL")]
+    CH --> DB2[("ChromaDB")]
+```
+
+> [!note] Current vs target architecture
+> This is a **target architecture**, not code already implemented. In Part 1 only `Employee` and its tests exist. A first simple iteration may use an in-memory repository and ChromaDB alone; PostgreSQL can later become the authoritative record store.
+
+### Dependency direction
+
+```mermaid
+flowchart TD
+    PRES["Presentation"] --> APP["Application"]
+    INFRA["Infrastructure adapters"] --> APP
+    APP --> DOMAIN["Domain"]
+    INFRA --> DOMAIN
+    DOMAIN --> RULE["No imports from FastAPI, ChromaDB or PostgreSQL"]
+```
+
+The use case invokes an injected object satisfying a port; the port is an interface, **not** a separately running service.
+
+### Future replaceable search port
+
+```mermaid
+classDiagram
+    class EmployeeSearchPort {
+        <<interface>>
+        +index(employee)
+        +search(criteria)
+        +delete(employee_id)
+    }
+    class ChromaSearchAdapter
+    class PgVectorSearchAdapter
+    class OpenSearchAdapter
+    EmployeeSearchPort <|.. ChromaSearchAdapter
+    EmployeeSearchPort <|.. PgVectorSearchAdapter
+    EmployeeSearchPort <|.. OpenSearchAdapter
+```
+
+A common interface helps portability, but a new backend still needs adapter code, data migration and retrieval-quality testing.
+
+## 5. TDD approach
+
+### Red → Green → Refactor
+
+```mermaid
+flowchart TD
+    R["Choose a behavior"] --> T["Write failing test"]
+    T --> RED["RED: Observe failure"]
+    RED --> I["Implement minimum behavior"]
+    I --> GREEN["GREEN: Tests pass"]
+    GREEN --> REF["REFACTOR: Improve design"]
+    REF --> ALL["Run tests again"]
+    ALL --> Q{"All passing?"}
+    Q -->|No| I
+    Q -->|Yes| NEXT["Next behavior"]
+    NEXT --> R
+```
+
+### Test layers
+
+```mermaid
+flowchart TB
+    T["Test suite"] --> U["Unit tests"]
+    T --> I["Integration tests"]
+    T --> A["Acceptance tests"]
+    U --> D["Domain invariants"]
+    U --> F["Use cases with fake ports"]
+    I --> C["Real ChromaDB adapter"]
+    A --> HTTP["Observable HTTP requirements"]
+```
+
+## 6. Hands-on project setup
+
+**Prerequisites:** Python-compatible development machine, `uv`, Git, and a terminal. Docker is needed only in a later lesson.
+
+```bash
+uv --version
+mkdir employee-search
+cd employee-search
+uv init --package --python 3.11
+uv add --dev pytest pytest-cov ruff
+uv run python --version
+uv run pytest --version
+```
+
+`uv init --package` creates an installable `src`-layout project. Keep the generated `pyproject.toml` and `uv.lock` under version control.
+
+Create these files/directories in your editor:
+
+```text
+employee-search/
+├── pyproject.toml
+├── uv.lock
+├── .python-version
+├── README.md
+├── src/
+│   └── employee_search/
+│       ├── __init__.py
+│       └── domain/
+│           ├── __init__.py
+│           └── employee.py
+└── tests/
+    └── unit/
+        └── test_employee.py
+```
+
+```mermaid
+flowchart TD
+    ROOT["employee-search/"] --> CFG["pyproject.toml + uv.lock"]
+    ROOT --> SRC["src/employee_search/"]
+    ROOT --> TEST["tests/unit/"]
+    SRC --> DOM["domain/employee.py"]
+    TEST --> UT["test_employee.py"]
+    UT -. verifies .-> DOM
+```
+
+## 7. RED — write tests first
+
+Create `tests/unit/test_employee.py`:
+
+```python
+import pytest
+
+from employee_search.domain.employee import Employee
+
+
+def make_employee(**overrides):
+    """Construct a valid employee, overriding fields as needed."""
+    data = {
+        "id": "employee_1",
+        "name": "John Doe",
+        "department": "Engineering",
+        "role": "Software Engineer",
+        "experience": 5,
+        "skills": ("Python", "React"),
+        "location": "New York",
+    }
+    data.update(overrides)
+    return Employee(**data)
+
+
+def test_create_valid_employee():
+    employee = make_employee()
+    assert employee.id == "employee_1"
+    assert employee.name == "John Doe"
+    assert employee.experience == 5
+    assert employee.skills == ("Python", "React")
+
+
+def test_reject_negative_experience():
+    with pytest.raises(ValueError, match="Experience"):
+        make_employee(experience=-1)
+
+
+def test_reject_empty_name():
+    with pytest.raises(ValueError, match="Name"):
+        make_employee(name="")
+
+
+def test_reject_empty_id():
+    with pytest.raises(ValueError, match="ID"):
+        make_employee(id="")
+
+
+def test_accept_zero_experience():
+    employee = make_employee(experience=0)
+    assert employee.experience == 0
+```
+
+Run:
+
+```bash
+uv run pytest tests/unit/test_employee.py -v
+```
+
+**Expected RED:** test collection fails because `employee_search.domain.employee` has not yet been implemented. This is a useful failure, not a successful test run.
+
+### Why use a test factory?
+
+```mermaid
+flowchart LR
+    F["make_employee defaults"] --> O["Apply overrides"]
+    O --> A["experience = -1"]
+    O --> B["name = empty"]
+    O --> C["id = empty"]
+    O --> D["experience = 0"]
+    A --> T["Focused tests"]
+    B --> T
+    C --> T
+    D --> T
+```
+
+## 8. GREEN — implement the entity
+
+Create `src/employee_search/domain/employee.py`:
+
+```python
+from dataclasses import dataclass
+
+
+@dataclass(frozen=True)
+class Employee:
+    id: str
+    name: str
+    department: str
+    role: str
+    experience: int
+    skills: tuple[str, ...]
+    location: str
+
+    def __post_init__(self) -> None:
+        if not self.id.strip():
+            raise ValueError("Employee ID cannot be empty")
+        if not self.name.strip():
+            raise ValueError("Name cannot be empty")
+        if self.experience < 0:
+            raise ValueError("Experience cannot be negative")
+```
+
+Run:
+
+```bash
+uv run pytest tests/unit/test_employee.py -v
+```
+
+**Expected GREEN:** five tests pass.
+
+### Dataclass concepts
+
+```mermaid
+flowchart TD
+    A["@dataclass(frozen=True)"] --> INIT["Generated __init__"]
+    A --> EQ["Generated equality and representation"]
+    A --> IMM["Blocks ordinary field reassignment"]
+    INIT --> POST["__post_init__"]
+    POST --> INV["Check domain invariants"]
+```
+
+`frozen=True` is **shallow** immutability, not deep immutability. We use a tuple for `skills` to avoid keeping a mutable list there. Python type hints are not runtime validation; this introductory model assumes correctly typed inputs, and later lessons can add explicit boundary validation.
+
+## 9. REFACTOR and verify
+
+Ask whether each rule belongs in the domain and whether any complexity can be removed. Do **not** introduce `EmployeeId`, `Experience`, factories, services, or repositories merely for architectural appearance.
+
+```bash
+uv run pytest -v
+uv run ruff check .
+uv run pytest --cov=employee_search --cov-report=term-missing
+```
+
+Coverage indicates what ran, not whether the assertions are meaningful.
+
+Suggested `.gitignore`:
+
+```gitignore
+.venv/
+__pycache__/
+.pytest_cache/
+.ruff_cache/
+.coverage
+htmlcov/
+```
+
+Commit:
+
+```bash
+git init
+git add .
+git commit -m "feat(domain): introduce Employee entity with invariants"
+```
+
+## 10. Future ChromaDB retrieval flow
+
+The Coursera lab constructs descriptive employee text, embeds it with `all-MiniLM-L6-v2` (384 dimensions), stores it in ChromaDB, and performs similarity search with metadata filters.
+
+```mermaid
+flowchart TB
+    E["Employee"] --> TEXT["Searchable text representation"]
+    TEXT --> MODEL["SentenceTransformer"]
+    MODEL --> VECTOR["384-dimensional embedding"]
+    VECTOR --> DB[("ChromaDB")]
+    E --> META["Metadata: department, experience, location"]
+    META --> DB
+    Q["User query"] --> QE["Query embedding"]
+    QE --> SEARCH["Similarity search"]
+    DB --> SEARCH
+    FILTER["Mandatory metadata filters"] --> SEARCH
+    SEARCH --> RESULTS["Ranked matching employees"]
+```
+
+**Important:** semantic similarity is not proof of a required skill. A Java developer might rank near a Python query. If Python is mandatory, verify it through structured data or another explicit constraint.
+
+### Why separate repository and search ports?
+
+```mermaid
+flowchart TD
+    APP["Application"] --> REP["EmployeeRepository port"]
+    APP --> SEARCH["EmployeeSearch port"]
+    PG["PostgreSQL adapter"] -. implements .-> REP
+    CH["ChromaDB adapter"] -. implements .-> SEARCH
+    PG --> TRUTH[("Authoritative employee records")]
+    CH --> INDEX[("Derived search index")]
+```
+
+This is the **longer-term** design. It introduces synchronization concerns: stable IDs, indexing retries, and eventual consistency between authoritative records and the derived index.
+
+## 11. Future Docker Compose deployment
+
+Docker will package the API and ChromaDB as separate services once we have an application adapter to run.
+
+```mermaid
+flowchart TB
+    USER["HTTP client"] -->|"localhost:8000"| API["FastAPI container"]
+    subgraph COMPOSE["Docker Compose network"]
+        API -->|"internal HTTP"| CH["ChromaDB container"]
+        CH --> VOL[("Named persistent volume")]
+    end
+```
+
+Later, we will add a pinned Dockerfile, a `compose.yaml`, health/readiness checks, persistent Chroma storage, and integration tests. We should verify image-specific configuration and health-check commands against the selected Chroma version rather than assuming they work.
+
+## 12. Milestones and definition of done
+
+```mermaid
+flowchart TD
+    M1["M1: Employee entity + unit tests"] --> M2["M2: Repository port + fake"]
+    M2 --> M3["M3: RegisterEmployee use case"]
+    M3 --> M4["M4: SearchEmployees use case"]
+    M4 --> M5["M5: ChromaDB adapter"]
+    M5 --> M6["M6: FastAPI"]
+    M6 --> M7["M7: Docker Compose"]
+    M7 --> M8["M8: Integration + acceptance tests"]
+    M8 --> M9["M9: PostgreSQL / AWS portability"]
+```
+
+### Part 1 checklist
+
+- [ ] `uv init --package --python 3.11` completed
+- [ ] `pytest`, `pytest-cov`, and `ruff` installed
+- [ ] Tests written before the entity
+- [ ] Initial test failure observed
+- [ ] `Employee` entity implemented
+- [ ] All five tests passing
+- [ ] Ruff check passing
+- [ ] Git commit created
+
+### Final mental model
+
+```mermaid
+flowchart TB
+    R["Requirements: What must happen?"] --> AC["Acceptance criteria: How do we verify it?"]
+    AC --> D["DDD: What does the business mean?"]
+    D --> U["Use cases: How is behavior coordinated?"]
+    U --> P["Ports: What capabilities are needed?"]
+    P --> A["Adapters: How are capabilities provided?"]
+    A --> I["Infrastructure: ChromaDB, PostgreSQL"]
+    T["TDD: Red → Green → Refactor"] -. verifies .-> D
+    T -. verifies .-> U
+    T -. verifies .-> A
+    DOCKER["Docker: Reproducible runtime"] -. packages .-> I
+```
+
+> [!success] Key takeaway
+> **Requirements** specify behavior; **DDD** models the business; **use cases** coordinate operations; **ports** define dependencies; **adapters** implement them; **TDD** verifies behavior; **Docker** packages the runtime.
+
+### Next lesson
+
+**Workshop 02 — RegisterEmployee using a repository port and an in-memory fake.** We will write failing use-case tests, introduce dependency injection, handle duplicate IDs, and keep ChromaDB outside the core.
