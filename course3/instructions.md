@@ -796,6 +796,350 @@ git commit -m "feat(application): register employees through repository port"
 **Part 3 (future):** Define `EmployeeSearchPort`, generate embeddings, implement the ChromaDB outbound adapter, and add integration tests against the Docker Compose service. We will distinguish exact metadata constraints from semantic ranking, as the Coursera lab does.
 
 ---
+title: "Employee Search Workshop — Quiz: Parts 0–2"
+date: 2026-11-10
+tags: [quiz, python, ddd, hexagonal-architecture, tdd, ports-and-adapters]
+---
+
+# Employee Search Quiz — Parts 0–2
+
+**Covers:** [[00-Setup]] · [[01-Part-1-Domain-and-TDD]] · [[02-Part-2-Use-Case-and-Ports]]
+
+## Scorecard
+
+You scored **5 / 10**: 2 / 5 on medium and 3 / 5 on hard. Your misses are about *how pieces connect* (dependency direction, Protocols, exceptions, test intent), not about what each piece is.
+
+| # | Level | Topic | Your answer | Correct answer | Result |
+| --- | --- | --- | --- | --- | --- |
+| M1 | Medium | Where business rules live | Employee entity | Employee entity | Right |
+| M2 | Medium | Protocol without inheritance | Runtime registration | Structural typing | Wrong |
+| M3 | Medium | Allowed import direction | Port → adapter | Adapter → domain | Wrong |
+| M4 | Medium | Raising a non-Exception class | Silently ignored | TypeError: must derive from BaseException | Wrong |
+| M5 | Medium | `uv run pytest` blocked | Launcher blocked | Launcher blocked | Right |
+| H1 | Hard | Concurrent duplicate registration | Safe: frozen | Overwrite possible; fix with DB uniqueness | Wrong |
+| H2 | Hard | Why `skills` is a tuple | Shallow freeze | Shallow freeze | Right |
+| H3 | Hard | `int` hint accepts 2.5 | Hints not enforced | Hints not enforced | Right |
+| H4 | Hard | Why assert the original after raises | Nothing extra | Catches save-then-raise | Wrong |
+| H5 | Hard | Swapping in PostgreSQL | New adapter + wiring | New adapter + wiring | Right |
+
+### Where each question lives
+
+Each box is a part of the code you've built. The labels show which questions test it.
+
+```mermaid
+flowchart LR
+    subgraph Domain["domain/"]
+        E["Employee entity<br/>M1 · H2 · H3"]
+        X["EmployeeAlreadyExists<br/>M4"]
+    end
+    subgraph Application["application/"]
+        UC["RegisterEmployeeUseCase<br/>H1 · H4"]
+        P["EmployeeRepository port<br/>M2 · M3"]
+    end
+    subgraph Adapters["adapters/"]
+        IM["InMemoryEmployeeRepository<br/>H5"]
+    end
+    T["Tooling: uv + pytest<br/>M5"]
+
+    UC --> P
+    UC --> E
+    UC --> X
+    IM -. "implements" .-> P
+    IM --> E
+```
+
+## Medium questions
+
+### M1. Where does "experience cannot be negative" belong?
+
+**Your answer:** Employee entity. **Correct.**
+
+The rule is true of any employee, whatever workflow created it, so it lives in `Employee.__post_init__` in `domain/employee.py`. Putting it in the use case would let a future `UpdateEmployee` use case skip it. Putting it in an adapter would tie a business rule to storage. FastAPI can add input validation later, but the entity is the last line of defence.
+
+Every path that creates an `Employee` goes through the same check, so no caller can skip it:
+
+```mermaid
+flowchart LR
+    H["FastAPI request<br/>future"] --> R["RegisterEmployee<br/>use case"]
+    U["UpdateEmployee<br/>future use case"] --> E
+    T["Unit tests"] --> E
+    R --> E["Employee.__post_init__<br/>experience must be >= 0"]
+    E -->|"valid"| OK["Employee object"]
+    E -->|"invalid"| ERR["ValueError"]
+```
+
+### M2. Why does `InMemoryEmployeeRepository` count as implementing the port without inheriting from it?
+
+**Your answer:** Runtime registration. **Correct answer:** Structural typing.
+
+`EmployeeRepository` is a `typing.Protocol`. A Protocol describes a *shape*: any class with `get_by_id(employee_id) -> Employee | None` and `save(employee) -> None` matches it. This is static "duck typing", checked by a type checker such as mypy or Pyright, not by Python at runtime.
+
+Nothing gets registered at import time. At runtime Python simply calls `repository.get_by_id(...)`, and it works because the method exists. Remove `save` from the adapter and Python would only fail when `save` is actually called, while a type checker would flag it immediately.
+
+```python
+class EmployeeRepository(Protocol):          # the shape
+    def get_by_id(self, employee_id: str) -> Employee | None: ...
+    def save(self, employee: Employee) -> None: ...
+
+class InMemoryEmployeeRepository:            # no base class
+    def get_by_id(...): ...                  # matches the shape
+    def save(...): ...
+```
+
+The benefit: the adapter does not have to import the port, which keeps coupling low.
+
+The dotted arrow means "matches the shape". It is not inheritance:
+
+```mermaid
+classDiagram
+    class EmployeeRepository {
+        <<Protocol>>
+        +get_by_id(employee_id) Optional~Employee~
+        +save(employee) None
+    }
+    class InMemoryEmployeeRepository {
+        -_employees dict
+        +get_by_id(employee_id) Optional~Employee~
+        +save(employee) None
+    }
+    class RegisterEmployeeUseCase {
+        -_repository EmployeeRepository
+        +execute(employee) None
+    }
+    RegisterEmployeeUseCase --> EmployeeRepository : depends on
+    InMemoryEmployeeRepository ..|> EmployeeRepository : same shape, no base class
+```
+
+Who checks the match, and when:
+
+```mermaid
+flowchart LR
+    S["Source code"] --> TC["Type checker<br/>mypy / Pyright"]
+    TC -->|"before running"| F1["Flags a missing save()"]
+    S --> RT["Python runtime"]
+    RT -->|"only when called"| F2["AttributeError on<br/>repository.save(...)"]
+```
+
+### M3. Which import direction is allowed?
+
+**Your answer:** Port → adapter. **Correct answer:** Adapter → domain.
+
+The dependency rule is that **arrows point inward**, toward the domain. Outer layers may import inner layers, never the reverse.
+
+- Adapters → application ports and domain: allowed (`in_memory_employee_repository.py` imports `Employee`).
+- Application → domain: allowed (the use case imports `Employee` and `EmployeeAlreadyExists`).
+- Domain → anything: never.
+- Port → adapter: never. A port is a contract the core owns. If the port imported a concrete adapter, the core would depend on infrastructure, and swapping in PostgreSQL would mean editing the core.
+
+The one place that knows about concrete adapters is the **composition root** (the test, `demo_registration.py`, or a future `bootstrap/` module), which builds the adapter and passes it into the use case.
+
+Solid arrows are imports that are allowed. The red dotted arrows are imports that must never exist:
+
+```mermaid
+flowchart LR
+    subgraph Outside["Outside the core"]
+        CR["Composition root<br/>tests · demo · bootstrap"]
+        AD["adapters/outbound<br/>InMemoryEmployeeRepository"]
+    end
+    subgraph Core["Application core"]
+        UC["application/use_cases"]
+        P["application/ports"]
+        D["domain<br/>Employee · exceptions"]
+    end
+
+    CR --> AD
+    CR --> UC
+    AD --> D
+    UC --> P
+    UC --> D
+    P --> D
+    P -. "never" .-> AD
+    D -. "never" .-> UC
+
+    linkStyle 6,7 stroke:#d33,stroke-width:2px,stroke-dasharray:5
+```
+
+### M4. What happens when you raise a class with no base class?
+
+**Your answer:** Silently ignored. **Correct answer:** `TypeError: exceptions must derive from BaseException`.
+
+Python never silently skips a `raise`. It checks the object, sees `EmployeeAlreadyExists` is not an exception type, and raises a `TypeError` instead. That still stops `execute()`, so `save()` would not run. But callers catching `EmployeeAlreadyExists` would miss it, and `pytest.raises(EmployeeAlreadyExists)` would fail. The fix is `class EmployeeAlreadyExists(Exception):`.
+
+```mermaid
+flowchart TD
+    A["raise EmployeeAlreadyExists(id)"] --> B{"Is the class a subclass<br/>of BaseException?"}
+    B -->|"Yes: class X(Exception)"| C["EmployeeAlreadyExists propagates<br/>pytest.raises and callers catch it"]
+    B -->|"No: class X:"| D["Python raises TypeError instead<br/>callers waiting for EmployeeAlreadyExists miss it"]
+```
+
+### M5. Why did `uv run pytest` fail but `uv run python -m pytest` work?
+
+**Your answer:** Launcher blocked. **Correct.**
+
+`uv` installs a small launcher `.venv/Scripts/pytest.exe` when it installs pytest. Windows Application Control (Smart App Control) blocked that unsigned executable with OS error 4551. `python -m pytest` runs the same pytest code through the already-trusted `python.exe`, so nothing new has to be executed.
+
+```mermaid
+flowchart LR
+    A["uv run pytest"] --> B[".venv/Scripts/pytest.exe<br/>new launcher"]
+    B --> X["Blocked by Application Control<br/>os error 4551"]
+    C["uv run python -m pytest"] --> D["python.exe<br/>already trusted"]
+    D --> E["imports the pytest module"]
+    E --> F["Tests run"]
+```
+
+## Hard questions
+
+### H1. Two requests register "employee_1" at the same moment. What happens?
+
+**Your answer:** Safe: frozen. **Correct answer:** The last write can silently win. Fix it with atomic uniqueness in the database.
+
+`frozen=True` only stops you changing fields on an `Employee` object that already exists (`employee.name = "x"` raises). It says nothing about the repository's dictionary, where `self._employees[employee.id] = employee` happily replaces whatever is stored under that key.
+
+The bug is that "check, then save" is two separate steps, so two requests can interleave like this:
+
+```mermaid
+sequenceDiagram
+    participant A as Request A
+    participant B as Request B
+    participant Repo as Repository
+    A->>Repo: get_by_id("employee_1")
+    Repo-->>A: None
+    B->>Repo: get_by_id("employee_1")
+    Repo-->>B: None
+    Note over A,B: Both checks pass. Neither has saved yet.
+    A->>Repo: save(A)
+    B->>Repo: save(B)
+    Note over Repo: B silently overwrote A. No error raised.
+```
+
+Both checks pass because neither has saved yet. A `threading.Lock` would help inside one process, but production usually runs several worker processes or servers, and a lock in one doesn't block the others. The real fix is to make the **database** enforce uniqueness atomically (a PostgreSQL `UNIQUE` / primary key constraint), and have the adapter translate the duplicate-key error into `EmployeeAlreadyExists`.
+
+With that fix, the database decides atomically and the second request gets the domain error:
+
+```mermaid
+sequenceDiagram
+    participant A as Request A
+    participant B as Request B
+    participant PG as Postgres adapter
+    participant DB as PostgreSQL (id is UNIQUE)
+    A->>PG: add(A)
+    PG->>DB: INSERT employee_1
+    DB-->>PG: OK
+    B->>PG: add(B)
+    PG->>DB: INSERT employee_1
+    DB-->>PG: unique violation
+    PG-->>B: raise EmployeeAlreadyExists
+    Note over DB: A is kept. Nothing was overwritten.
+```
+
+### H2. Why is `skills` a tuple?
+
+**Your answer:** Shallow freeze. **Correct.**
+
+`frozen=True` blocks `employee.skills = [...]`, but not `employee.skills.append("Go")`. With a list, anyone holding a reference, including the in-memory repository, could change a "frozen" entity in place. A tuple can't be changed, so the entity really is immutable. It's also hashable, so a frozen `Employee` can be used in a `set` or as a dict key.
+
+`frozen` protects the box but not what is inside it. Both the caller and the repository point at the **same** object:
+
+```mermaid
+flowchart LR
+    subgraph WithList["skills as list"]
+        C1["Caller's employee"] --> O1["Employee<br/>frozen"]
+        R1["Repository's stored employee"] --> O1
+        O1 --> L1["skills list<br/>Python, React"]
+        C1 -. "skills.append('Go')" .-> L1
+        L1 --> X1["Repository now sees Go too"]
+    end
+    subgraph WithTuple["skills as tuple"]
+        C2["Caller's employee"] --> O2["Employee<br/>frozen"]
+        O2 --> L2["skills tuple<br/>Python, React"]
+        C2 -. "skills.append('Go')" .-> L2
+        L2 --> X2["AttributeError<br/>nothing changes"]
+    end
+```
+
+### H3. Why does `experience: int` accept 2.5?
+
+**Your answer:** Hints not enforced. **Correct.**
+
+Dataclasses read type hints only to build `__init__`. They never check values. So `test_fractional_experience` passes, while the annotation says something else. Tests are executable documentation, so you should make them agree: change the hint to `float` if half-years are valid, or add a check in `__post_init__` and turn that test into a rejection test.
+
+```mermaid
+flowchart LR
+    V["Employee(experience=2.5)"] --> I["dataclass __init__<br/>assigns the value<br/>no type check"]
+    I --> P["__post_init__<br/>only checks experience >= 0"]
+    P --> OK["Object created<br/>with 2.5"]
+    TC["mypy / Pyright"] -. "would flag float vs int<br/>before running" .-> V
+```
+
+### H4. What does the extra `get_by_id(...) == original` assert catch?
+
+**Your answer:** Nothing extra. **Correct answer:** A save-then-raise bug.
+
+The requirement (REQ-001b) has **two** parts: duplicates are *rejected* **and** the original is *not overwritten*. `pytest.raises` only proves the first. This broken version would pass a raises-only test:
+
+```python
+def execute(self, employee):
+    existing = self._repository.get_by_id(employee.id)
+    self._repository.save(employee)          # oops: overwrites first
+    if existing is not None:
+        raise EmployeeAlreadyExists(employee.id)
+```
+
+The exception still fires, but the original record is gone. The extra assert checks the **state** after the error, not just that an error happened. In general, assert every part of the requirement, including what should *not* have changed.
+
+Here's how the test runs against the buggy version. The first check passes; only the second catches the bug:
+
+```mermaid
+sequenceDiagram
+    participant T as Test
+    participant UC as Buggy use case
+    participant Repo as Repository
+    T->>UC: execute(duplicate)
+    UC->>Repo: get_by_id("employee_1")
+    Repo-->>UC: original
+    UC->>Repo: save(duplicate)
+    Note over Repo: original overwritten
+    UC-->>T: raise EmployeeAlreadyExists
+    Note over T: Check 1, pytest.raises: PASSES
+    T->>Repo: get_by_id("employee_1")
+    Repo-->>T: duplicate
+    Note over T: Check 2, == original: FAILS, bug caught
+```
+
+### H5. What changes when PostgreSQL replaces the in-memory adapter?
+
+**Your answer:** New adapter + wiring. **Correct.**
+
+You write a `PostgresEmployeeRepository` with the same `get_by_id` / `save` shape and change the composition root to build it. `Employee`, `RegisterEmployeeUseCase` and both ports stay the same, and the use-case unit tests keep using the fast in-memory adapter. The Postgres adapter gets its own integration tests in `tests/integration/`. One caveat from H1: once you have a real database you may strengthen the port (for example an atomic `add()` that raises on duplicates), which is a deliberate change to the contract, not a leak of SQL into the core.
+
+Everything inside "Unchanged core" stays exactly as it is. Only the boxes outside it are new or rewired:
+
+```mermaid
+flowchart TB
+    subgraph Core["Unchanged core"]
+        UC["RegisterEmployeeUseCase"] --> P["EmployeeRepository port"]
+        UC --> D["Employee"]
+    end
+    CR["Composition root<br/>only the wiring changes"] --> UC
+    CR --> PG
+    M["InMemoryEmployeeRepository<br/>kept for unit tests"] -. "implements" .-> P
+    PG["PostgresEmployeeRepository<br/>new adapter"] -. "implements" .-> P
+    PG --> DB[(PostgreSQL)]
+    IT["tests/integration<br/>new"] --> PG
+    UT["tests/unit<br/>unchanged"] --> M
+```
+
+## What to review next
+
+Your 5 misses fall into three themes. Each has a small exercise you can do in this repo.
+
+- [ ] **Dependency direction (M3, M2).** Draw the arrows for every import in `src/`. Every arrow should point toward `domain/`. Then answer reflection question 2 in Part 2 (§13): why does the use case depend on `EmployeeRepository` and not on `InMemoryEmployeeRepository`?
+- [ ] **Exceptions (M4).** In a Python REPL, run `class X: pass` then `raise X()` and read the error. Then change `exceptions.py` to subclass `Exception` (still pending from Part 2).
+- [ ] **What tests prove (H4, H1).** Write `test_duplicate_id_is_rejected_without_overwriting` yourself. Temporarily swap the use case to save-then-raise and watch the second assert fail. Then answer reflection question 5: why is the duplicate check insufficient under concurrency?
+
+
+
+---
 title: "Employee Search Workshop — 03 Semantic Search Use Case"
 tags: [python, ddd, tdd, hexagonal-architecture, semantic-search]
 ---
