@@ -7,7 +7,7 @@ tags: [use-case, tdd, chromadb, embeddings, integration-testing, hexagonal]
 **Requirements:** REQ-009, REQ-007. **Acceptance scenarios:** AC-007, AC-016, AC-017, AC-011. **Prerequisite:** [[UC-002-Retrieve-Employee]] completed.
 
 > [!abstract] Outcome
-> Turn an `Employee` into a **searchable representation** (descriptive text, filter metadata and an embedding vector) and store it in ChromaDB under the employee's stable ID. Re-indexing the same ID replaces the entry instead of duplicating it. This is the first half of retrieval in RAG; [[UC-004-Search-Employees]] is the second half.
+> Turn an `Employee` into a **searchable representation** (descriptive text, filter metadata and an embedding vector) and store it in ChromaDB under the employee's stable ID. Re-indexing the same ID replaces the entry instead of duplicating it. UC-003 only **writes** to the index; it never queries it.
 
 ## 0. Before you start: environment checklist
 
@@ -91,7 +91,7 @@ Write **one test per scenario**. AC-007 is tested twice: once in a unit test aga
 |---|---|---|---|---|---|
 | **AC-007** | Employee is indexed under its stable ID | A valid employee `e1`; an empty index | Index `e1` | The index contains exactly one entry, with ID `"e1"` | Unit + integration |
 | **AC-016** | Re-indexing replaces, never duplicates | `e1` is already indexed with role "Engineer" | Index `e1` again with role "Lead" | Still exactly one entry for `"e1"`, and it reflects "Lead" | Unit + integration |
-| **AC-017** | Entry is searchable and filterable | A valid employee `e1` | Index `e1` | The text mentions role, experience, department, every skill and location; the metadata holds `department` (string) and `experience` (integer); the embedding has 384 dimensions | Unit + integration |
+| **AC-017** | Entry holds text, metadata and embedding | A valid employee `e1` | Index `e1` | The text mentions role, experience, department, every skill and location; the metadata holds `department` (string) and `experience` (integer); the embedding has 384 dimensions | Unit + integration |
 | **AC-011** | Index survives a restart | `e1` is indexed in a fixed collection | Restart the Chroma container, keeping its volume | `e1` is still there | Manual |
 
 ```gherkin
@@ -107,7 +107,7 @@ Scenario: AC-016 Re-indexing replaces the entry
   Then the index still contains exactly one entry for "e1"
   And that entry reflects role "Lead"
 
-Scenario: AC-017 Indexed entry is searchable and filterable
+Scenario: AC-017 Indexed entry holds text, metadata and embedding
   When I index employee "e1"
   Then its descriptive text mentions its role, experience, department, skills and location
   And its metadata holds department as text and experience as an integer
@@ -128,7 +128,7 @@ Scenario: AC-011 Index survives a Chroma restart
 | AC-017 | `@pytest.mark.ac("AC-017")` | `test_search_document_describes_employee` | `tests/unit/test_search_document.py` | 1 |
 | AC-007 | `@pytest.mark.ac("AC-007")` | `test_chroma_stores_employee_under_its_id` | `tests/integration/test_chroma_employee_index.py` | 1 |
 | AC-016 | `@pytest.mark.ac("AC-016")` | `test_chroma_reindex_replaces_entry` | `tests/integration/test_chroma_employee_index.py` | 1 |
-| AC-017 | `@pytest.mark.ac("AC-017")` | `test_chroma_entry_is_searchable_and_filterable` | `tests/integration/test_chroma_employee_index.py` | 1 |
+| AC-017 | `@pytest.mark.ac("AC-017")` | `test_chroma_entry_holds_text_metadata_and_embedding` | `tests/integration/test_chroma_employee_index.py` | 1 |
 | AC-011 | not automated | manual script in §9 | `scripts/persistence_check.py` | manual |
 
 **Total: 3 unit tests + 3 integration tests + 1 manual check.**
@@ -137,13 +137,13 @@ Scenario: AC-011 Index survives a Chroma restart
 
 - **"Exactly one entry" is the heart of AC-007 and AC-016.** Assert on the *count*, not just that `e1` exists. A buggy `add` instead of `upsert` would leave `e1` present *and* duplicated, or fail on the second call.
 - **Never assert exact embedding values or distances.** They depend on the model and its version. Assert on shape (384 dimensions) and on IDs, text and metadata.
-- **`experience` must stay an `int` in metadata.** UC-004 filters with `{"experience": {"$gte": 10}}`, and that only works on numbers. Stored as `"5"`, the filter would silently match nothing.
+- **Metadata keeps each value's type: `experience` stays an `int`.** Chroma metadata accepts `str`, `int`, `float` and `bool`, so there's no need to stringify it. An adapter that stored `"5"` would quietly change the data, which is why AC-017 checks the type and not just the value.
 - **Integration tests use a fresh, randomly named collection and delete it afterwards** (NFR-004), so tests can't see each other's data and leave nothing behind.
 - **Integration tests skip, rather than fail, when Chroma isn't running.** Unit tests must run without Docker (NFR-003).
 
 ### Out of scope for UC-003
 
-- **Searching:** that's UC-004. Here you verify entries with `collection.get(...)`, not with a search query.
+- **Querying the index:** UC-003 verifies entries by ID with `collection.get(...)`. No query text, no ranking.
 - **Deleting index entries:** REQ-006 / AC-014, in UC-006.
 - **Indexing automatically when an employee is registered:** REQ-011 / AC-013, a future orchestration use case. In UC-003, indexing is called explicitly.
 - **Retries and failure handling** when Chroma is down: also REQ-011.
@@ -174,13 +174,11 @@ uv run python -c "import urllib.request; print(urllib.request.urlopen('http://lo
 > [!warning] Host vs container networking
 > From **your machine** (tests, scripts), Chroma is `localhost:8001`. From **another Compose service** (the `api` container), it's `chroma:8000`. Inside a container, `localhost` means that container itself.
 
-Register an `integration` marker next to `ac` in `pyproject.toml`, so you can run the fast tests on their own:
+**Test levels come from the folder.** `tests/conftest.py` marks everything in `tests/unit/` as `unit` and everything in `tests/integration/` as `integration`, and both markers are registered in `pyproject.toml`. You don't add these markers to test files; putting the file in the right folder is enough.
 
-```toml
-markers = [
-    "ac(*ids): ...",   # keep the existing line
-    "integration: needs a running ChromaDB (docker compose up -d chroma)",
-]
+```bash
+uv run python -m pytest -m "not integration"   # fast loop, no Docker
+uv run python -m pytest -m integration         # only the Chroma tests
 ```
 
 ## 4. RED: unit tests (no Docker)
@@ -356,7 +354,8 @@ from employee_search.adapters.outbound.chroma.employee_index import ChromaEmploy
 from employee_search.application.search_document import build_search_document
 from employee_search.domain.employee import Employee
 
-pytestmark = pytest.mark.integration
+# No `pytestmark = pytest.mark.integration` needed: tests/conftest.py marks
+# everything in tests/integration/ automatically.
 
 CHROMA_HOST = os.getenv("CHROMA_HOST", "localhost")
 CHROMA_PORT = int(os.getenv("CHROMA_PORT", "8001"))
@@ -416,7 +415,7 @@ def test_chroma_reindex_replaces_entry(collection):
 
 
 @pytest.mark.ac("AC-017")
-def test_chroma_entry_is_searchable_and_filterable(collection):
+def test_chroma_entry_holds_text_metadata_and_embedding(collection):
     employee = make_employee()
 
     ChromaEmployeeIndex(collection).upsert(employee)
@@ -472,7 +471,7 @@ def _metadata(employee: Employee) -> dict[str, str | int]:
         "name": employee.name,
         "department": employee.department,
         "role": employee.role,
-        "experience": employee.experience,  # int, so UC-004 can filter with $gte
+        "experience": employee.experience,  # keep as int; Chroma stores numbers natively
         "skills": ", ".join(employee.skills),
         "location": employee.location,
     }
@@ -571,7 +570,7 @@ Questions to answer aloud:
 2. Registering `e1` doesn't make it searchable. Which requirement closes that gap, and why is it hard to get right?
 3. Why does `build_search_document` live in `application/` rather than in the Chroma adapter?
 4. Which process computes the embeddings: your Python process or the Chroma server? (Hint: the embedding function is attached to the client-side collection.)
-5. What would break in UC-004 if `experience` were stored as the string `"5"`?
+5. Why does the adapter call `upsert` and not `add`? What would AC-016 catch if it used `add`?
 
 ## Definition of Done
 
@@ -579,7 +578,7 @@ Questions to answer aloud:
 - [ ] AC-016: unit and integration tests prove re-indexing replaces, without duplicating.
 - [ ] AC-017: the text, metadata types and 384-dim embedding are verified.
 - [ ] AC-011: `persistence_check.py check` prints `AC-011 PASS` after `docker compose restart chroma`.
-- [ ] Every UC-003 test is tagged with `@pytest.mark.ac(...)`; integration tests are also marked `integration`.
+- [ ] Every UC-003 test is tagged with `@pytest.mark.ac(...)`; integration tests live in `tests/integration/`, so they're marked `integration` automatically.
 - [ ] `pytest -m "not integration"` passes with Docker stopped (NFR-003).
 - [ ] No domain module imports `chromadb` (NFR-001), and the use case imports only the port (NFR-002).
 - [ ] Commit: `git add . && git commit -m "feat: implement UC-003 index employee with Chroma adapter"`
